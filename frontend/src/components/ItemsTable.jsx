@@ -23,7 +23,6 @@ export default function ItemsTable() {
     setError("");
     try {
       const data = await fetchItems({ includeArchived, q: query, page, limit });
-      // data: { items, total, page, pages, limit }
       setItems(data.items || []);
       setTotal(data.total || 0);
       setPages(data.pages || 1);
@@ -72,8 +71,7 @@ export default function ItemsTable() {
     e.preventDefault();
     if (!newItem.type.trim() || !newItem.name.trim()) return;
     try {
-      const created = await createItem({ type: newItem.type, name: newItem.name });
-      // reload first page to keep order
+      await createItem({ type: newItem.type, name: newItem.name });
       setPage(1);
       setNewItem({ type: "", name: "" });
       await load();
@@ -82,27 +80,17 @@ export default function ItemsTable() {
     }
   }
 
-  const headerCellStyle = {
-    textAlign: "left",
-    borderBottom: "1px solid #ddd",
-    padding: 8,
-    position: "sticky",
-    top: 0,
-    background: "#fff",
-    zIndex: 1,
-  };
-
   return (
-    <div style={{ padding: 16 }}>
-      <h2>Inventory</h2>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+    <div>
+      <h2 className="page-title" style={{ fontSize: 20 }}>Inventory</h2>
+      <div className="controls">
         <input
+          className="input input-full"
           placeholder="Search..."
           value={query}
           onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-          style={{ padding: 6, flex: 1 }}
         />
-        <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <label className="checkbox">
           <input
             type="checkbox"
             checked={includeArchived}
@@ -110,91 +98,93 @@ export default function ItemsTable() {
           />
           Show archived
         </label>
-        <select value={String(limit)} onChange={(e) => { const v = e.target.value; setLimit(v === "all" ? "all" : parseInt(v, 10)); setPage(1); }}>
+        <select className="select" value={String(limit)} onChange={(e) => { const v = e.target.value; setLimit(v === "all" ? "all" : parseInt(v, 10)); setPage(1); }}>
           <option value="50">50</option>
           <option value="100">100</option>
           <option value="all">All</option>
         </select>
-        <button onClick={load} disabled={loading}>
+        <button type="button" className="button" onClick={load} disabled={loading}>
           Refresh
         </button>
       </div>
 
-      {error && <div style={{ color: "red" }}>{error}</div>}
+      {error && <div style={{ color: "#b91c1c" }}>{error}</div>}
 
-      <form onSubmit={addNew} style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+      <form onSubmit={addNew} className="controls" style={{ marginBottom: 12 }}>
         <input
+          className="input"
           placeholder="Type"
           value={newItem.type}
           onChange={(e) => setNewItem((s) => ({ ...s, type: e.target.value }))}
-          style={{ padding: 6, width: 220 }}
+          style={{ width: 220 }}
         />
         <input
+          className="input input-full"
           placeholder="Item name"
           value={newItem.name}
           onChange={(e) => setNewItem((s) => ({ ...s, name: e.target.value }))}
-          style={{ padding: 6, flex: 1 }}
         />
-        <button type="submit">Add</button>
+        <button className="button primary" type="submit">Add</button>
       </form>
 
-      <div style={{ maxHeight: 500, overflow: "auto", border: "1px solid #eee" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div className="table-wrap">
+        <table className="table">
           <thead>
             <tr>
-              <th style={headerCellStyle}>Type</th>
-              <th style={headerCellStyle}>Item</th>
-              <th style={headerCellStyle}>Archived</th>
-              <th style={headerCellStyle}>Actions</th>
+              <th className="th">Type</th>
+              <th className="th">Item</th>
+              <th className="th">Archived</th>
+              <th className="th">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={4} style={{ padding: 12 }}>Loading...</td>
+                <td className="td" colSpan={4}>Loading...</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ padding: 12 }}>No items</td>
+                <td className="td" colSpan={4}>No items</td>
               </tr>
             ) : (
               filtered.map((item) => (
-                <tr key={item._id} style={{ opacity: item.archived ? 0.6 : 1 }}>
-                  <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>
+                <tr key={item._id} className={item.archived ? "row-archived" : undefined}>
+                  <td className="td">
                     {editId === item._id ? (
                       <input
+                        className="input"
                         value={draft.type}
                         onChange={(e) => setDraft((s) => ({ ...s, type: e.target.value }))}
-                        style={{ padding: 6, width: 220 }}
+                        style={{ width: 220 }}
                       />
                     ) : (
                       item.type
                     )}
                   </td>
-                  <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>
+                  <td className="td">
                     {editId === item._id ? (
                       <input
+                        className="input input-full"
                         value={draft.name}
                         onChange={(e) => setDraft((s) => ({ ...s, name: e.target.value }))}
-                        style={{ padding: 6, width: "100%" }}
                       />
                     ) : (
                       item.name
                     )}
                   </td>
-                  <td style={{ borderBottom: "1px solid #eee", padding: 8 }}>
+                  <td className="td">
                     <span>{item.archived ? "Yes" : "No"}</span>
                   </td>
-                  <td style={{ borderBottom: "1px solid #eee", padding: 8, display: "flex", gap: 8 }}>
+                  <td className="td" style={{ display: "flex", gap: 8 }}>
                     {editId === item._id ? (
                       <>
-                        <button onClick={() => saveEdit(item._id)}>Save</button>
-                        <button onClick={cancelEdit}>Cancel</button>
+                        <button type="button" className="button" onClick={() => saveEdit(item._id)}>Save</button>
+                        <button type="button" className="button" onClick={cancelEdit}>Cancel</button>
                       </>
                     ) : (
                       <>
-                        <button onClick={() => startEdit(item)}>Edit</button>
-                        <button onClick={() => onToggleArchive(item._id)}>
+                        <button type="button" className="button" onClick={() => startEdit(item)}>Edit</button>
+                        <button type="button" className="button" onClick={() => onToggleArchive(item._id)}>
                           {item.archived ? "Unarchive" : "Archive"}
                         </button>
                       </>
@@ -207,14 +197,13 @@ export default function ItemsTable() {
         </table>
       </div>
 
-      {/* Pagination controls */}
       {limit !== "all" && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}>
-          <button onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page <= 1}>Prev</button>
+        <div className="pagination">
+          <button type="button" className="button" onClick={() => setPage((p) => Math.max(p - 1, 1))} disabled={page <= 1}>Prev</button>
           <span>
             Page {page} / {pages} • Total {total}
           </span>
-          <button onClick={() => setPage((p) => Math.min(p + 1, pages))} disabled={page >= pages}>Next</button>
+          <button type="button" className="button" onClick={() => setPage((p) => Math.min(p + 1, pages))} disabled={page >= pages}>Next</button>
         </div>
       )}
     </div>
