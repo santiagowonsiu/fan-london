@@ -2,7 +2,8 @@ import mongoose from "mongoose";
 
 const itemSchema = new mongoose.Schema(
   {
-    type: { type: String, required: true, trim: true },
+    type: { type: String, required: true, trim: true }, // Keep for backward compatibility
+    typeId: { type: mongoose.Schema.Types.ObjectId, ref: "Type" }, // Reference to Type
     name: { type: String, required: true, trim: true },
     archived: { type: Boolean, default: false },
   },

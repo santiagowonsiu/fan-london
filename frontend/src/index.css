@@ -79,3 +79,141 @@ body {
   .page-title { font-size: 28px; }
   .input { font-size: 15px; }
 }
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-close:hover {
+  color: #374151;
+}
+
+.modal-form {
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.warning {
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #92400e;
+}
+
+.suggestions {
+  margin-top: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #f9fafb;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestions-title {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.suggestion-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.suggestion-type {
+  font-size: 12px;
+  color: #6b7280;
+  background: #e5e7eb;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.suggestion-archived {
+  font-size: 12px;
+  color: #dc2626;
+  font-style: italic;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}

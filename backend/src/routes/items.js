@@ -34,6 +34,17 @@ itemsRouter.get("/", async (req, res) => {
   res.json({ items, total, page: pageNum, pages, limit: allRequested ? "all" : limitNum });
 });
 
+// Name suggestions for avoiding duplicates
+itemsRouter.get("/suggest", async (req, res) => {
+  const { q = "" } = req.query;
+  if (!q) return res.json([]);
+  const items = await Item.find({ name: { $regex: q, $options: "i" } })
+    .select("name type archived")
+    .limit(10)
+    .sort({ name: 1 });
+  res.json(items);
+});
+
 // Create
 itemsRouter.post("/", async (req, res) => {
   try {

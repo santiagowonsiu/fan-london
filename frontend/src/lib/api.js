@@ -38,3 +38,34 @@ export async function toggleArchive(id) {
   if (!res.ok) throw new Error("Failed to toggle archive");
   return res.json();
 }
+
+export async function deleteItem(id) {
+  const res = await fetch(`${API_BASE_URL}/api/items/${id}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error("Failed to delete item");
+  // DELETE returns 204 (no content), so don't try to parse JSON
+  return;
+}
+
+export async function fetchTypes() {
+  const res = await fetch(`${API_BASE_URL}/api/types`);
+  if (!res.ok) throw new Error("Failed to fetch types");
+  return res.json();
+}
+
+export async function createType(name) {
+  const res = await fetch(`${API_BASE_URL}/api/types`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error("Failed to create type");
+  return res.json();
+}
+
+export async function fetchSuggestions(query) {
+  const res = await fetch(`${API_BASE_URL}/api/items/suggest?q=${encodeURIComponent(query)}`);
+  if (!res.ok) throw new Error("Failed to fetch suggestions");
+  return res.json();
+}

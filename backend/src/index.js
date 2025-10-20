@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import morgan from "morgan";
 import cors from "cors";
 import { itemsRouter } from "./routes/items.js";
+import { typesRouter } from "./routes/types.js";
 import { seedFromCsvOnce } from "./seedCsv.js";
 
 dotenv.config();
@@ -23,6 +24,8 @@ async function connectToDatabase() {
   try {
     await mongoose.connect(mongoUri, {
       dbName: "inventory",
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
     });
     console.log("Connected to MongoDB");
   } catch (err) {
@@ -37,6 +40,7 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/items", itemsRouter);
+app.use("/api/types", typesRouter);
 
 const port = process.env.PORT || 4000;
 

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { createItem, fetchItems, toggleArchive, updateItem } from "../lib/api";
+import { createItem, fetchItems, toggleArchive, updateItem, deleteItem } from "../lib/api";
+import AddItemModal from "./AddItemModal";
 
 export default function ItemsTable() {
   const [items, setItems] = useState([]);
@@ -9,7 +10,8 @@ export default function ItemsTable() {
   const [error, setError] = useState("");
   const [editId, setEditId] = useState(null);
   const [draft, setDraft] = useState({ type: "", name: "" });
-  const [newItem, setNewItem] = useState({ type: "", name: "" });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50); // default 50
@@ -67,17 +69,19 @@ export default function ItemsTable() {
     }
   }
 
-  async function addNew(e) {
-    e.preventDefault();
-    if (!newItem.type.trim() || !newItem.name.trim()) return;
+  async function onDelete(id) {
+    if (!confirm("Are you sure you want to delete this item?")) return;
     try {
-      await createItem({ type: newItem.type, name: newItem.name });
-      setPage(1);
-      setNewItem({ type: "", name: "" });
-      await load();
+      await deleteItem(id);
+      setItems((prev) => prev.filter((it) => it._id !== id));
     } catch (e) {
       alert(e.message);
     }
+  }
+
+  function handleItemAdded() {
+    setPage(1);
+    load();
   }
 
   return (
@@ -106,26 +110,23 @@ export default function ItemsTable() {
         <button type="button" className="button" onClick={load} disabled={loading}>
           Refresh
         </button>
+        <button 
+          type="button" 
+          className={`button ${isEditMode ? "primary" : ""}`} 
+          onClick={() => setIsEditMode(!isEditMode)}
+        >
+          {isEditMode ? "Exit Edit" : "Edit Mode"}
+        </button>
+        <button 
+          type="button" 
+          className="button primary" 
+          onClick={() => setShowAddModal(true)}
+        >
+          Add Item
+        </button>
       </div>
 
       {error && <div style={{ color: "#b91c1c" }}>{error}</div>}
-
-      <form onSubmit={addNew} className="controls" style={{ marginBottom: 12 }}>
-        <input
-          className="input"
-          placeholder="Type"
-          value={newItem.type}
-          onChange={(e) => setNewItem((s) => ({ ...s, type: e.target.value }))}
-          style={{ width: 220 }}
-        />
-        <input
-          className="input input-full"
-          placeholder="Item name"
-          value={newItem.name}
-          onChange={(e) => setNewItem((s) => ({ ...s, name: e.target.value }))}
-        />
-        <button className="button primary" type="submit">Add</button>
-      </form>
 
       <div className="table-wrap">
         <table className="table">
@@ -133,18 +134,18 @@ export default function ItemsTable() {
             <tr>
               <th className="th">Type</th>
               <th className="th">Item</th>
-              <th className="th">Archived</th>
-              <th className="th">Actions</th>
+              {isEditMode && <th className="th">Archived</th>}
+              {isEditMode && <th className="th">Actions</th>}
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td className="td" colSpan={4}>Loading...</td>
+                <td className="td" colSpan={isEditMode ? 4 : 2}>Loading...</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td className="td" colSpan={4}>No items</td>
+                <td className="td" colSpan={isEditMode ? 4 : 2}>No items</td>
               </tr>
             ) : (
               filtered.map((item) => (
@@ -172,24 +173,31 @@ export default function ItemsTable() {
                       item.name
                     )}
                   </td>
-                  <td className="td">
-                    <span>{item.archived ? "Yes" : "No"}</span>
-                  </td>
-                  <td className="td" style={{ display: "flex", gap: 8 }}>
-                    {editId === item._id ? (
-                      <>
-                        <button type="button" className="button" onClick={() => saveEdit(item._id)}>Save</button>
-                        <button type="button" className="button" onClick={cancelEdit}>Cancel</button>
-                      </>
-                    ) : (
-                      <>
-                        <button type="button" className="button" onClick={() => startEdit(item)}>Edit</button>
-                        <button type="button" className="button" onClick={() => onToggleArchive(item._id)}>
-                          {item.archived ? "Unarchive" : "Archive"}
-                        </button>
-                      </>
-                    )}
-                  </td>
+                  {isEditMode && (
+                    <td className="td">
+                      <span>{item.archived ? "Yes" : "No"}</span>
+                    </td>
+                  )}
+                  {isEditMode && (
+                    <td className="td" style={{ display: "flex", gap: 8 }}>
+                      {editId === item._id ? (
+                        <>
+                          <button type="button" className="button" onClick={() => saveEdit(item._id)}>Save</button>
+                          <button type="button" className="button" onClick={cancelEdit}>Cancel</button>
+                        </>
+                      ) : (
+                        <>
+                          <button type="button" className="button" onClick={() => startEdit(item)}>Edit</button>
+                          <button type="button" className="button" onClick={() => onToggleArchive(item._id)}>
+                            {item.archived ? "Unarchive" : "Archive"}
+                          </button>
+                          <button type="button" className="button" onClick={() => onDelete(item._id)} style={{ background: "#dc2626", color: "white" }}>
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))
             )}
@@ -206,6 +214,12 @@ export default function ItemsTable() {
           <button type="button" className="button" onClick={() => setPage((p) => Math.min(p + 1, pages))} disabled={page >= pages}>Next</button>
         </div>
       )}
+
+      <AddItemModal 
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onItemAdded={handleItemAdded}
+      />
     </div>
   );
 }
