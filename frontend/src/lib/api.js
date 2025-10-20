@@ -69,3 +69,34 @@ export async function fetchSuggestions(query) {
   if (!res.ok) throw new Error("Failed to fetch suggestions");
   return res.json();
 }
+
+// Transactions API
+export async function postTransaction({ itemId, direction, quantity }) {
+  const res = await fetch(`${API_BASE_URL}/api/transactions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ itemId, direction, quantity }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to create transaction");
+  }
+  return res.json();
+}
+
+export async function fetchTransactions({ page = 1, limit = 50, direction, itemId } = {}) {
+  const params = new URLSearchParams();
+  params.set("page", String(page));
+  params.set("limit", String(limit));
+  if (direction) params.set("direction", direction);
+  if (itemId) params.set("itemId", itemId);
+  const res = await fetch(`${API_BASE_URL}/api/transactions?${params.toString()}`);
+  if (!res.ok) throw new Error("Failed to fetch transactions");
+  return res.json();
+}
+
+export async function fetchStock() {
+  const res = await fetch(`${API_BASE_URL}/api/transactions/stock`);
+  if (!res.ok) throw new Error("Failed to fetch stock");
+  return res.json();
+}

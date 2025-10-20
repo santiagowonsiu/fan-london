@@ -217,3 +217,8 @@ body {
   padding-top: 16px;
   border-top: 1px solid #e5e7eb;
 }
+
+/* Table column sizing */
+.table .col-item { width: 50%; }
+.table .col-narrow { width: 100px; white-space: nowrap; }
+.table .col-narrow input { width: 100%; }

@@ -48,8 +48,8 @@ itemsRouter.get("/suggest", async (req, res) => {
 // Create
 itemsRouter.post("/", async (req, res) => {
   try {
-    const { type, name, archived } = req.body;
-    const item = await Item.create({ type, name, archived: !!archived });
+    const { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit } = req.body;
+    const item = await Item.create({ type, name, archived: !!archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit });
     res.status(201).json(item);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -60,10 +60,10 @@ itemsRouter.post("/", async (req, res) => {
 itemsRouter.put("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, name, archived } = req.body;
+    const { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit } = req.body;
     const item = await Item.findByIdAndUpdate(
       id,
-      { type, name, archived },
+      { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit },
       { new: true, runValidators: true }
     );
     if (!item) return res.status(404).json({ error: "Not found" });

@@ -5,6 +5,7 @@ import morgan from "morgan";
 import cors from "cors";
 import { itemsRouter } from "./routes/items.js";
 import { typesRouter } from "./routes/types.js";
+import { transactionsRouter } from "./routes/transactions.js";
 import { seedFromCsvOnce } from "./seedCsv.js";
 
 dotenv.config();
@@ -41,6 +42,7 @@ app.get("/health", (req, res) => {
 
 app.use("/api/items", itemsRouter);
 app.use("/api/types", typesRouter);
+app.use("/api/transactions", transactionsRouter);
 
 const port = process.env.PORT || 4000;
 

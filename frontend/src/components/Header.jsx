@@ -9,9 +9,24 @@ export default function Header() {
           <img src={fanLogo} alt="FAN" style={{ height: 32 }} />
         </Link>
         <nav className="nav">
-          <NavLink to="/" className={({ isActive }) => isActive ? "active" : undefined} end>Inventory</NavLink>
-          <NavLink to="/settings" className={({ isActive }) => isActive ? "active" : undefined}>Settings</NavLink>
-          <NavLink to="/account" className={({ isActive }) => isActive ? "active" : undefined}>Account</NavLink>
+          <NavLink to="/" className={({ isActive }) => (isActive ? "active" : undefined)} end>
+            Product List
+          </NavLink>
+          <NavLink to="/transactions" className={({ isActive }) => (isActive ? "active" : undefined)}>
+            Transactions
+          </NavLink>
+          <NavLink to="/logs" className={({ isActive }) => (isActive ? "active" : undefined)}>
+            Transaction Logs
+          </NavLink>
+          <NavLink to="/stock" className={({ isActive }) => (isActive ? "active" : undefined)}>
+            Current Stock
+          </NavLink>
+          <NavLink to="/settings" className={({ isActive }) => (isActive ? "active" : undefined)}>
+            Settings
+          </NavLink>
+          <NavLink to="/account" className={({ isActive }) => (isActive ? "active" : undefined)}>
+            Account
+          </NavLink>
         </nav>
       </div>
     </header>

@@ -9,7 +9,14 @@ export default function ItemsTable() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [editId, setEditId] = useState(null);
-  const [draft, setDraft] = useState({ type: "", name: "" });
+  const [draft, setDraft] = useState({
+    type: "",
+    name: "",
+    baseContentValue: "",
+    baseContentUnit: "",
+    purchasePackQuantity: "",
+    purchasePackUnit: "",
+  });
   const [isEditMode, setIsEditMode] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -42,17 +49,39 @@ export default function ItemsTable() {
 
   function startEdit(item) {
     setEditId(item._id);
-    setDraft({ type: item.type, name: item.name });
+    setDraft({
+      type: item.type,
+      name: item.name,
+      baseContentValue: item.baseContentValue ?? "",
+      baseContentUnit: item.baseContentUnit ?? "",
+      purchasePackQuantity: item.purchasePackQuantity ?? "",
+      purchasePackUnit: item.purchasePackUnit ?? "",
+    });
   }
 
   function cancelEdit() {
     setEditId(null);
-    setDraft({ type: "", name: "" });
+    setDraft({
+      type: "",
+      name: "",
+      baseContentValue: "",
+      baseContentUnit: "",
+      purchasePackQuantity: "",
+      purchasePackUnit: "",
+    });
   }
 
   async function saveEdit(id) {
     try {
-      const updated = await updateItem(id, draft);
+      const payload = {
+        type: draft.type,
+        name: draft.name,
+        baseContentValue: draft.baseContentValue === "" ? undefined : Number(draft.baseContentValue),
+        baseContentUnit: draft.baseContentUnit || undefined,
+        purchasePackQuantity: draft.purchasePackQuantity === "" ? undefined : Number(draft.purchasePackQuantity),
+        purchasePackUnit: draft.purchasePackUnit || undefined,
+      };
+      const updated = await updateItem(id, payload);
       setItems((prev) => prev.map((it) => (it._id === id ? updated : it)));
       cancelEdit();
     } catch (e) {
@@ -84,9 +113,13 @@ export default function ItemsTable() {
     load();
   }
 
+  // Compute colspans based on visible columns
+  const baseCols = 6; // Type, Item, Base Content, Unit, Pack Qty, Pack Unit
+  const cols = isEditMode ? baseCols + 2 : baseCols; // + Archived, + Actions
+
   return (
     <div>
-      <h2 className="page-title" style={{ fontSize: 20 }}>Inventory</h2>
+      <h2 className="page-title" style={{ fontSize: 20 }}>Product List</h2>
       <div className="controls">
         <input
           className="input input-full"
@@ -134,6 +167,10 @@ export default function ItemsTable() {
             <tr>
               <th className="th">Type</th>
               <th className="th">Item</th>
+              <th className="th" title="Base Content: intrinsic quantity per product. Example: 'X 100 Bags' → 100 bags; '400 ML' → 400 ml.">Base Content</th>
+              <th className="th" title="Unit of the base content (e.g., g, kg, ml, l, bags, pieces).">Unit</th>
+              <th className="th" title="Purchase Pack: how many base units are in one purchasable unit (defaults to 1).">Purchase Pack</th>
+              <th className="th" title="Unit for the purchase pack (e.g., unit, box, bag, pack).">Pack Unit</th>
               {isEditMode && <th className="th">Archived</th>}
               {isEditMode && <th className="th">Actions</th>}
             </tr>
@@ -141,11 +178,11 @@ export default function ItemsTable() {
           <tbody>
             {loading ? (
               <tr>
-                <td className="td" colSpan={isEditMode ? 4 : 2}>Loading...</td>
+                <td className="td" colSpan={cols}>Loading...</td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td className="td" colSpan={isEditMode ? 4 : 2}>No items</td>
+                <td className="td" colSpan={cols}>No items</td>
               </tr>
             ) : (
               filtered.map((item) => (
@@ -171,6 +208,60 @@ export default function ItemsTable() {
                       />
                     ) : (
                       item.name
+                    )}
+                  </td>
+                  <td className="td" style={{ width: 120 }}>
+                    {editId === item._id ? (
+                      <input
+                        className="input"
+                        type="number"
+                        step="0.01"
+                        value={draft.baseContentValue}
+                        onChange={(e) => setDraft((s) => ({ ...s, baseContentValue: e.target.value }))}
+                        style={{ width: 120 }}
+                      />
+                    ) : (
+                      item.baseContentValue ?? "-"
+                    )}
+                  </td>
+                  <td className="td" style={{ width: 140 }}>
+                    {editId === item._id ? (
+                      <input
+                        className="input"
+                        value={draft.baseContentUnit}
+                        onChange={(e) => setDraft((s) => ({ ...s, baseContentUnit: e.target.value }))}
+                        placeholder="e.g., g, kg, ml, l, pieces"
+                        style={{ width: 140 }}
+                      />
+                    ) : (
+                      item.baseContentUnit ?? "-"
+                    )}
+                  </td>
+                  <td className="td" style={{ width: 120 }}>
+                    {editId === item._id ? (
+                      <input
+                        className="input"
+                        type="number"
+                        step="0.01"
+                        value={draft.purchasePackQuantity}
+                        onChange={(e) => setDraft((s) => ({ ...s, purchasePackQuantity: e.target.value }))}
+                        style={{ width: 120 }}
+                      />
+                    ) : (
+                      item.purchasePackQuantity ?? "-"
+                    )}
+                  </td>
+                  <td className="td" style={{ width: 140 }}>
+                    {editId === item._id ? (
+                      <input
+                        className="input"
+                        value={draft.purchasePackUnit}
+                        onChange={(e) => setDraft((s) => ({ ...s, purchasePackUnit: e.target.value }))}
+                        placeholder="e.g., pieces, unit, bag, box"
+                        style={{ width: 140 }}
+                      />
+                    ) : (
+                      item.purchasePackUnit ?? "-"
                     )}
                   </td>
                   {isEditMode && (
