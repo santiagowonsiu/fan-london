@@ -30,20 +30,30 @@ export default function ActivityLogPage() {
   const [actionFilter, setActionFilter] = useState('all');
   const [entityFilter, setEntityFilter] = useState('all');
   const [expandedId, setExpandedId] = useState(null);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(25);
+  const [total, setTotal] = useState(0);
+  const [pages, setPages] = useState(1);
 
   useEffect(() => {
     loadLogs();
-  }, [actionFilter, entityFilter]);
+  }, [actionFilter, entityFilter, page, limit]);
 
   async function loadLogs() {
     setLoading(true);
     setError('');
     try {
-      const params = { limit: 200 };
+      const params = { page, limit };
       if (actionFilter !== 'all') params.action = actionFilter;
       if (entityFilter !== 'all') params.entityType = entityFilter;
       const data = await fetchActivityLogs(params);
       setLogs(data.logs || []);
+      setTotal(data.total || 0);
+      setPages(data.pages || 1);
     } catch (e) {
       setError(e.message || 'Failed to load');
     } finally {
@@ -55,6 +65,35 @@ export default function ActivityLogPage() {
     setExpandedId(expandedId === id ? null : id);
   }
 
+  function applyDateFilter() {
+    // Client-side date filtering
+    return logs.filter(log => {
+      const logDate = new Date(log.createdAt);
+      
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        if (logDate < start) return false;
+      }
+      
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        if (logDate > end) return false;
+      }
+      
+      return true;
+    });
+  }
+
+  function clearFilters() {
+    setActionFilter('all');
+    setEntityFilter('all');
+    setStartDate('');
+    setEndDate('');
+    setPage(1);
+  }
+
   function formatDetails(log) {
     if (!log.details) return null;
 
@@ -62,8 +101,8 @@ export default function ActivityLogPage() {
       if (log.action === 'transaction_deleted') {
         return (
           <div style={{ fontSize: 13, color: '#4b5563' }}>
-            <div>Direction: {log.details.direction}</div>
-            <div>Quantity: {log.details.quantity}</div>
+            <div>Direction: <strong>{log.details.direction}</strong></div>
+            <div>Quantity: <strong>{log.details.quantity}</strong></div>
             <div>Original Date: {new Date(log.details.date).toLocaleString()}</div>
           </div>
         );
@@ -83,6 +122,14 @@ export default function ActivityLogPage() {
               <div>Direction: {log.details.after.direction}</div>
               <div>Quantity: {log.details.after.quantity}</div>
             </div>
+          </div>
+        );
+      }
+      if (log.action === 'transaction_added') {
+        return (
+          <div style={{ fontSize: 13, color: '#4b5563' }}>
+            <div>Direction: <strong>{log.details.direction}</strong></div>
+            <div>Quantity: <strong>{log.details.quantity}</strong></div>
           </div>
         );
       }
@@ -109,13 +156,19 @@ export default function ActivityLogPage() {
         if (log.details.before.archived !== log.details.after.archived) {
           changes.push({ field: 'Archived', before: String(log.details.before.archived), after: String(log.details.after.archived) });
         }
+        if (log.details.before.baseContentValue !== log.details.after.baseContentValue) {
+          changes.push({ field: 'Base Content', before: log.details.before.baseContentValue, after: log.details.after.baseContentValue });
+        }
+        if (log.details.before.baseContentUnit !== log.details.after.baseContentUnit) {
+          changes.push({ field: 'Base Unit', before: log.details.before.baseContentUnit, after: log.details.after.baseContentUnit });
+        }
         
         return (
           <div style={{ fontSize: 13, color: '#4b5563' }}>
             {changes.length > 0 ? (
               changes.map((change, idx) => (
                 <div key={idx} style={{ marginBottom: 4 }}>
-                  <strong>{change.field}:</strong> {change.before} → {change.after}
+                  <strong>{change.field}:</strong> <span style={{ color: '#dc2626' }}>{change.before || '(empty)'}</span> → <span style={{ color: '#059669' }}>{change.after || '(empty)'}</span>
                 </div>
               ))
             ) : (
@@ -137,15 +190,40 @@ export default function ActivityLogPage() {
     return null;
   }
 
+  const filteredLogs = applyDateFilter();
+
   return (
     <div>
       <h2 className="page-title" style={{ fontSize: 20 }}>Activity Log</h2>
       
-      <div className="controls" style={{ marginBottom: 20 }}>
+      <div className="controls" style={{ marginBottom: 20, flexWrap: 'wrap' }}>
+        {/* Date Range */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 13, fontWeight: 500 }}>Start Date</label>
+          <input
+            type="date"
+            className="input"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            style={{ width: 160 }}
+          />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 13, fontWeight: 500 }}>End Date</label>
+          <input
+            type="date"
+            className="input"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            style={{ width: 160 }}
+          />
+        </div>
+
         <select
           className="select"
           value={entityFilter}
-          onChange={(e) => setEntityFilter(e.target.value)}
+          onChange={(e) => { setEntityFilter(e.target.value); setPage(1); }}
         >
           <option value="all">All Entities</option>
           <option value="product">Products</option>
@@ -155,7 +233,7 @@ export default function ActivityLogPage() {
         <select
           className="select"
           value={actionFilter}
-          onChange={(e) => setActionFilter(e.target.value)}
+          onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
         >
           <option value="all">All Actions</option>
           <option value="product_added">Product Added</option>
@@ -166,12 +244,30 @@ export default function ActivityLogPage() {
           <option value="transaction_deleted">Transaction Deleted</option>
         </select>
 
+        <select
+          className="select"
+          value={String(limit)}
+          onChange={(e) => { setLimit(parseInt(e.target.value)); setPage(1); }}
+        >
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+
+        <button type="button" className="button" onClick={clearFilters}>
+          Clear Filters
+        </button>
+
         <button type="button" className="button" onClick={loadLogs} disabled={loading}>
           Refresh
         </button>
       </div>
 
       {error && <div style={{ color: '#b91c1c', marginBottom: 12 }}>{error}</div>}
+
+      <div style={{ marginBottom: 12, color: '#6b7280', fontSize: 14 }}>
+        Showing {filteredLogs.length} of {total} activities
+      </div>
 
       <div className="table-wrap">
         <table className="table">
@@ -187,9 +283,9 @@ export default function ActivityLogPage() {
           <tbody>
             {loading ? (
               <tr><td className="td" colSpan={5}>Loading...</td></tr>
-            ) : logs.length === 0 ? (
+            ) : filteredLogs.length === 0 ? (
               <tr><td className="td" colSpan={5}>No activity logs</td></tr>
-            ) : logs.map((log) => (
+            ) : filteredLogs.map((log) => (
               <>
                 <tr key={log._id}>
                   <td className="td" style={{ whiteSpace: 'nowrap' }}>
@@ -235,7 +331,7 @@ export default function ActivityLogPage() {
                         onClick={() => toggleExpanded(log._id)}
                         style={{ fontSize: 12, padding: '4px 8px' }}
                       >
-                        {expandedId === log._id ? 'Hide' : 'Show'} Details
+                        {expandedId === log._id ? 'Hide' : 'Show'}
                       </button>
                     )}
                   </td>
@@ -252,7 +348,29 @@ export default function ActivityLogPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      <div className="pagination">
+        <button 
+          type="button" 
+          className="button" 
+          onClick={() => setPage(p => Math.max(p - 1, 1))} 
+          disabled={page <= 1}
+        >
+          Prev
+        </button>
+        <span>
+          Page {page} / {pages} • Total {total}
+        </span>
+        <button 
+          type="button" 
+          className="button" 
+          onClick={() => setPage(p => Math.min(p + 1, pages))} 
+          disabled={page >= pages}
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 }
-
