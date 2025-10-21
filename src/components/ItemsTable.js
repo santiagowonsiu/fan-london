@@ -101,9 +101,14 @@ export default function ItemsTable() {
   }
 
   async function onDelete(id) {
+    const justification = prompt('Please provide a justification for deleting this item:');
+    if (!justification || !justification.trim()) {
+      alert('Justification is required to delete an item.');
+      return;
+    }
     if (!confirm('Are you sure you want to delete this item?')) return;
     try {
-      await deleteItem(id);
+      await deleteItem(id, justification.trim());
       setItems((prev) => prev.filter((it) => it._id !== id));
     } catch (e) {
       alert(e.message);

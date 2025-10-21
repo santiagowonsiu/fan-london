@@ -46,11 +46,16 @@ export async function toggleArchive(id) {
   return res.json();
 }
 
-export async function deleteItem(id) {
-  const res = await fetch(`${API_BASE}/items/${id}`, {
+export async function deleteItem(id, justification) {
+  const params = new URLSearchParams();
+  if (justification) params.set('justification', justification);
+  const res = await fetch(`${API_BASE}/items/${id}?${params.toString()}`, {
     method: 'DELETE',
   });
-  if (!res.ok && res.status !== 204) throw new Error('Failed to delete item');
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to delete item');
+  }
 }
 
 export async function fetchTypes() {
@@ -105,6 +110,42 @@ export async function fetchTransactions(params = {}) {
 export async function fetchStock() {
   const res = await fetch(`${API_BASE}/transactions/stock`);
   if (!res.ok) throw new Error('Failed to fetch stock');
+  return res.json();
+}
+
+export async function updateTransaction(id, data) {
+  const res = await fetch(`${API_BASE}/transactions/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update transaction');
+  }
+  return res.json();
+}
+
+export async function deleteTransaction(id, justification) {
+  const params = new URLSearchParams();
+  if (justification) params.set('justification', justification);
+  const res = await fetch(`${API_BASE}/transactions/${id}?${params.toString()}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to delete transaction');
+  }
+}
+
+export async function fetchActivityLogs(params = {}) {
+  const query = new URLSearchParams();
+  query.set('page', String(params.page || 1));
+  query.set('limit', String(params.limit || 50));
+  if (params.action) query.set('action', params.action);
+  if (params.entityType) query.set('entityType', params.entityType);
+  const res = await fetch(`${API_BASE}/activity-logs?${query.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch activity logs');
   return res.json();
 }
 

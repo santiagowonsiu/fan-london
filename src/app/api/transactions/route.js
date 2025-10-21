@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import dbConnect from '@/lib/db/mongodb';
 import { Transaction } from '@/lib/models/Transaction';
 import { Item } from '@/lib/models/Item';
+import { ActivityLog } from '@/lib/models/ActivityLog';
 
 export async function POST(request) {
   await dbConnect();
@@ -20,13 +21,26 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Quantity must be > 0' }, { status: 400 });
   }
 
-  const exists = await Item.findById(itemId).select('_id');
-  if (!exists) {
+  const item = await Item.findById(itemId).select('name');
+  if (!item) {
     return NextResponse.json({ error: 'Item not found' }, { status: 404 });
   }
 
   try {
     const tx = await Transaction.create({ itemId, direction, quantity: qty });
+
+    // Log the activity
+    await ActivityLog.create({
+      action: 'transaction_added',
+      entityType: 'transaction',
+      entityId: tx._id,
+      entityName: item.name,
+      details: {
+        direction,
+        quantity: qty
+      }
+    });
+
     return NextResponse.json(tx, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });

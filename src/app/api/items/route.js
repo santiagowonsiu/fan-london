@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db/mongodb';
 import { Item } from '@/lib/models/Item';
+import { ActivityLog } from '@/lib/models/ActivityLog';
 
 export async function GET(request) {
   await dbConnect();
@@ -56,6 +57,22 @@ export async function POST(request) {
       purchasePackUnit,
       imageUrl,
     });
+
+    // Log the activity
+    await ActivityLog.create({
+      action: 'product_added',
+      entityType: 'product',
+      entityId: item._id,
+      entityName: item.name,
+      details: {
+        type: item.type,
+        baseContentValue: item.baseContentValue,
+        baseContentUnit: item.baseContentUnit,
+        purchasePackQuantity: item.purchasePackQuantity,
+        purchasePackUnit: item.purchasePackUnit
+      }
+    });
+
     return NextResponse.json(item, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { fetchItems, updateTransaction, deleteTransaction } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,21 +10,11 @@ const API_BASE = '/api';
 async function fetchTransactions(params = {}) {
   const query = new URLSearchParams();
   query.set('page', String(params.page || 1));
-  query.set('limit', String(params.limit || 1000)); // Get all for filtering
+  query.set('limit', String(params.limit || 1000));
   if (params.direction) query.set('direction', params.direction);
   if (params.itemId) query.set('itemId', params.itemId);
   const res = await fetch(`${API_BASE}/transactions?${query.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch transactions');
-  return res.json();
-}
-
-async function fetchItems(params = {}) {
-  const query = new URLSearchParams();
-  if (params.q) query.set('q', params.q);
-  query.set('limit', '1000');
-  query.set('archived', 'false');
-  const res = await fetch(`${API_BASE}/items?${query.toString()}`);
-  if (!res.ok) throw new Error('Failed to fetch items');
   return res.json();
 }
 
@@ -37,12 +28,17 @@ export default function TransactionLogsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [itemSearch, setItemSearch] = useState('');
-  const [directionFilter, setDirectionFilter] = useState('all'); // 'all', 'in', 'out'
+  const [directionFilter, setDirectionFilter] = useState('all');
   
   // For item suggestions
   const [items, setItems] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [selectedItems, setSelectedItems] = useState([]); // Array of item names
+  const [selectedItems, setSelectedItems] = useState([]);
+
+  // Edit mode
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editId, setEditId] = useState(null);
+  const [editDraft, setEditDraft] = useState({ direction: '', quantity: '' });
 
   useEffect(() => {
     loadTransactions();
@@ -78,7 +74,6 @@ export default function TransactionLogsPage() {
   function applyFilters() {
     let filtered = [...allRows];
 
-    // Filter by date range
     if (startDate) {
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
@@ -90,7 +85,6 @@ export default function TransactionLogsPage() {
       filtered = filtered.filter(tx => new Date(tx.createdAt) <= end);
     }
 
-    // Filter by selected items (name match)
     if (selectedItems.length > 0) {
       filtered = filtered.filter(tx => {
         const itemName = tx.itemId?.name?.toLowerCase() || '';
@@ -100,7 +94,6 @@ export default function TransactionLogsPage() {
       });
     }
 
-    // Filter by direction
     if (directionFilter !== 'all') {
       filtered = filtered.filter(tx => tx.direction === directionFilter);
     }
@@ -128,13 +121,58 @@ export default function TransactionLogsPage() {
     setDirectionFilter('all');
   }
 
-  // Calculate net movements
-  const netMovement = filteredRows.reduce((acc, tx) => {
-    if (tx.direction === 'in') {
-      return acc + tx.quantity;
-    } else {
-      return acc - tx.quantity;
+  function startEdit(tx) {
+    setEditId(tx._id);
+    setEditDraft({
+      direction: tx.direction,
+      quantity: tx.quantity
+    });
+  }
+
+  function cancelEdit() {
+    setEditId(null);
+    setEditDraft({ direction: '', quantity: '' });
+  }
+
+  async function saveEdit(id, originalItem) {
+    const justification = prompt('Please provide a justification for editing this transaction:');
+    if (!justification || !justification.trim()) {
+      alert('Justification is required to edit a transaction.');
+      return;
     }
+
+    try {
+      const updated = await updateTransaction(id, {
+        itemId: originalItem.itemId?._id,
+        direction: editDraft.direction,
+        quantity: Number(editDraft.quantity),
+        justification: justification.trim()
+      });
+      setAllRows(prev => prev.map(tx => tx._id === id ? updated : tx));
+      cancelEdit();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function onDelete(id) {
+    const justification = prompt('Please provide a justification for deleting this transaction:');
+    if (!justification || !justification.trim()) {
+      alert('Justification is required to delete a transaction.');
+      return;
+    }
+    if (!confirm('Are you sure you want to delete this transaction?')) return;
+    
+    try {
+      await deleteTransaction(id, justification.trim());
+      setAllRows(prev => prev.filter(tx => tx._id !== id));
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  const netMovement = filteredRows.reduce((acc, tx) => {
+    return acc + (tx.direction === 'in' ? tx.quantity : -tx.quantity);
   }, 0);
 
   const totalIn = filteredRows
@@ -148,6 +186,8 @@ export default function TransactionLogsPage() {
   const filteredItemSuggestions = items.filter(item =>
     itemSearch && item.name.toLowerCase().includes(itemSearch.toLowerCase())
   ).slice(0, 10);
+
+  const cols = isEditMode ? 6 : 5;
 
   return (
     <div>
@@ -231,8 +271,8 @@ export default function TransactionLogsPage() {
                       borderBottom: '1px solid #f3f4f6' 
                     }}
                     onClick={() => addItemFilter(item.name)}
-                    onMouseEnter={(e) => e.target.style.background = '#f9fafb'}
-                    onMouseLeave={(e) => e.target.style.background = 'white'}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
                   >
                     <div style={{ fontWeight: 500 }}>{item.name}</div>
                     <div style={{ fontSize: 12, color: '#6b7280' }}>{item.type}</div>
@@ -249,6 +289,18 @@ export default function TransactionLogsPage() {
             style={{ alignSelf: 'flex-end' }}
           >
             Clear Filters
+          </button>
+
+          <button 
+            type="button" 
+            className={`button ${isEditMode ? 'primary' : ''}`}
+            onClick={() => {
+              setIsEditMode(!isEditMode);
+              if (editId) cancelEdit();
+            }}
+            style={{ alignSelf: 'flex-end' }}
+          >
+            {isEditMode ? 'Exit Edit' : 'Edit Mode'}
           </button>
         </div>
 
@@ -338,13 +390,14 @@ export default function TransactionLogsPage() {
               <th className="th">Type</th>
               <th className="th">Direction</th>
               <th className="th" style={{ textAlign: 'right' }}>Quantity</th>
+              {isEditMode && <th className="th">Actions</th>}
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td className="td" colSpan={5}>Loading...</td></tr>
+              <tr><td className="td" colSpan={cols}>Loading...</td></tr>
             ) : filteredRows.length === 0 ? (
-              <tr><td className="td" colSpan={5}>No transactions found</td></tr>
+              <tr><td className="td" colSpan={cols}>No transactions found</td></tr>
             ) : filteredRows.map((tx) => (
               <tr key={tx._id}>
                 <td className="td" style={{ whiteSpace: 'nowrap' }}>
@@ -359,25 +412,90 @@ export default function TransactionLogsPage() {
                 <td className="td">{tx.itemId?.name || '-'}</td>
                 <td className="td" style={{ color: '#6b7280' }}>{tx.itemId?.type || '-'}</td>
                 <td className="td">
-                  <span style={{
-                    display: 'inline-block',
-                    padding: '2px 8px',
-                    borderRadius: 4,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    background: tx.direction === 'in' ? '#d1fae5' : '#fee2e2',
-                    color: tx.direction === 'in' ? '#065f46' : '#991b1b'
-                  }}>
-                    {tx.direction === 'in' ? 'Input' : 'Output'}
-                  </span>
+                  {editId === tx._id ? (
+                    <select
+                      className="select"
+                      value={editDraft.direction}
+                      onChange={(e) => setEditDraft(prev => ({ ...prev, direction: e.target.value }))}
+                      style={{ width: 100 }}
+                    >
+                      <option value="in">Input</option>
+                      <option value="out">Output</option>
+                    </select>
+                  ) : (
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: tx.direction === 'in' ? '#d1fae5' : '#fee2e2',
+                      color: tx.direction === 'in' ? '#065f46' : '#991b1b'
+                    }}>
+                      {tx.direction === 'in' ? 'Input' : 'Output'}
+                    </span>
+                  )}
                 </td>
-                <td className="td" style={{ 
-                  textAlign: 'right', 
-                  fontWeight: 600,
-                  color: tx.direction === 'in' ? '#059669' : '#dc2626'
-                }}>
-                  {tx.direction === 'in' ? '+' : '-'}{tx.quantity}
+                <td className="td" style={{ textAlign: 'right' }}>
+                  {editId === tx._id ? (
+                    <input
+                      className="input"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editDraft.quantity}
+                      onChange={(e) => setEditDraft(prev => ({ ...prev, quantity: e.target.value }))}
+                      style={{ width: 100, textAlign: 'right' }}
+                    />
+                  ) : (
+                    <span style={{ 
+                      fontWeight: 600,
+                      color: tx.direction === 'in' ? '#059669' : '#dc2626'
+                    }}>
+                      {tx.direction === 'in' ? '+' : '-'}{tx.quantity}
+                    </span>
+                  )}
                 </td>
+                {isEditMode && (
+                  <td className="td" style={{ display: 'flex', gap: 8 }}>
+                    {editId === tx._id ? (
+                      <>
+                        <button 
+                          type="button" 
+                          className="button" 
+                          onClick={() => saveEdit(tx._id, tx)}
+                        >
+                          Save
+                        </button>
+                        <button 
+                          type="button" 
+                          className="button" 
+                          onClick={cancelEdit}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button 
+                          type="button" 
+                          className="button" 
+                          onClick={() => startEdit(tx)}
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          type="button" 
+                          className="button" 
+                          onClick={() => onDelete(tx._id)}
+                          style={{ background: '#dc2626', color: 'white' }}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
