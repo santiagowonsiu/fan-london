@@ -547,6 +547,16 @@ export default function InternalOrdersPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                        <span style={{
+                          padding: '6px 12px',
+                          borderRadius: 6,
+                          fontSize: 13,
+                          fontWeight: 700,
+                          background: '#e0e7ff',
+                          color: '#3730a3'
+                        }}>
+                          {order.department || 'Kitchen'}
+                        </span>
                         <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
                           {new Date(order.createdAt).toLocaleString('en-GB', {
                             day: '2-digit',
@@ -556,16 +566,6 @@ export default function InternalOrdersPage() {
                             minute: '2-digit'
                           })}
                         </h3>
-                        <span style={{
-                          padding: '4px 10px',
-                          borderRadius: 4,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          background: '#e0e7ff',
-                          color: '#3730a3'
-                        }}>
-                          {order.department}
-                        </span>
                         <button
                           type="button"
                           onClick={() => deleteOrder(order._id)}
