@@ -199,11 +199,14 @@ export default function TransactionLogsPage() {
   }
 
   // Calculate running stock for each transaction PER ITEM
-  const rowsWithStock = filteredRows.map((tx, index) => {
+  // Need to calculate from oldest to newest, then reverse for display
+  const reversedRows = [...filteredRows].reverse(); // Oldest first
+  
+  const rowsWithStock = reversedRows.map((tx, index) => {
     // Calculate cumulative stock up to this transaction for THIS SPECIFIC ITEM
     const itemId = tx.itemId?._id;
-    const stockUpToHere = filteredRows
-      .slice(0, index + 1) // Include current transaction
+    const stockUpToHere = reversedRows
+      .slice(0, index + 1) // From oldest up to this transaction
       .filter(t => t.itemId?._id === itemId) // Only transactions for same item
       .reduce((acc, t) => {
         const packQty = t.quantityPack || t.quantity || 0;
@@ -214,7 +217,7 @@ export default function TransactionLogsPage() {
       ...tx,
       stockAtTime: stockUpToHere
     };
-  });
+  }).reverse(); // Reverse back to newest first for display
 
   // Paginate filtered results
   const totalPages = Math.ceil(rowsWithStock.length / itemsPerPage);
