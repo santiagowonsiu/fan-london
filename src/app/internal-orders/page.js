@@ -221,12 +221,13 @@ export default function InternalOrdersPage() {
     const order = orders.find(o => o._id === orderId);
     if (!order) return;
 
-    const justification = prompt('Why are you deleting this order?');
+    const orderLabel = order.orderNumber || `Order from ${new Date(order.createdAt).toLocaleString()}`;
+    const justification = prompt(`Why are you deleting order ${orderLabel}?`);
     if (!justification || !justification.trim()) {
       alert('Justification is required');
       return;
     }
-    if (!confirm('Are you sure you want to delete this entire order?')) return;
+    if (!confirm(`Are you sure you want to delete this entire order (${order.items.length} items)?`)) return;
 
     try {
       // Log to activity BEFORE deleting
@@ -237,12 +238,18 @@ export default function InternalOrdersPage() {
           action: 'internal_order_deleted',
           entityType: 'internal_order',
           entityId: orderId,
-          entityName: `${order.department || 'Kitchen'} Order`,
+          entityName: orderLabel,
           justification: justification.trim(),
           details: {
+            orderNumber: order.orderNumber,
             department: order.department,
             orderGroup: order.orderGroup,
             itemCount: order.items.length,
+            items: order.items.map(item => ({
+              name: item.itemId?.name,
+              quantity: item.quantityPack || item.quantity,
+              status: item.status
+            })),
             createdAt: order.createdAt
           }
         })
@@ -268,8 +275,9 @@ export default function InternalOrdersPage() {
     if (!order) return;
 
     const itemToDelete = order.items[itemIndex];
+    const orderLabel = order.orderNumber || `Order from ${new Date(order.createdAt).toLocaleString()}`;
     
-    const justification = prompt(`Why are you deleting "${itemToDelete.itemId?.name}" from this order?`);
+    const justification = prompt(`Why are you deleting "${itemToDelete.itemId?.name}" from ${orderLabel}?`);
     if (!justification || !justification.trim()) {
       alert('Justification is required');
       return;
@@ -288,10 +296,14 @@ export default function InternalOrdersPage() {
           entityName: itemToDelete.itemId?.name || 'Unknown Item',
           justification: justification.trim(),
           details: {
+            orderNumber: order.orderNumber,
             department: order.department,
             orderGroup: order.orderGroup,
             action: 'item_removed',
-            itemName: itemToDelete.itemId?.name
+            itemName: itemToDelete.itemId?.name,
+            itemType: itemToDelete.itemId?.type,
+            quantity: itemToDelete.quantityPack || itemToDelete.quantity,
+            itemStatus: itemToDelete.status || 'pending'
           }
         })
       });
@@ -619,6 +631,19 @@ export default function InternalOrdersPage() {
                         }}>
                           {order.department || 'Kitchen'}
                         </span>
+                        {order.orderNumber && (
+                          <span style={{
+                            padding: '4px 10px',
+                            borderRadius: 4,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            background: '#f3f4f6',
+                            color: '#374151',
+                            fontFamily: 'monospace'
+                          }}>
+                            {order.orderNumber}
+                          </span>
+                        )}
                         <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
                           {new Date(order.createdAt).toLocaleString('en-GB', {
                             day: '2-digit',

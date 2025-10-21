@@ -42,17 +42,28 @@ export async function PUT(request, context) {
         
         // Only log if status changed AND it's not the first change from pending
         if (oldItem && newItemStatus !== (oldItem.status || 'pending') && oldItem.statusChangedAt) {
+          // Get item details for logging
+          const itemDetails = await InternalOrder.findById(id).populate('items.itemId', 'name type');
+          const itemInfo = itemDetails.items[i];
+          
           await ActivityLog.create({
             action: 'internal_order_item_status_changed',
             entityType: 'internal_order',
             entityId: id,
-            entityName: oldItem.itemId?.name || 'Unknown Item',
+            entityName: itemInfo.itemId?.name || 'Unknown Item',
             details: {
+              orderNumber: order.orderNumber,
               orderGroup: order.orderGroup,
               department: order.department,
-              itemIndex: i,
+              itemName: itemInfo.itemId?.name,
+              itemType: itemInfo.itemId?.type,
+              quantity: newItem.quantity,
+              quantityPack: newItem.quantityPack,
+              quantityBase: newItem.quantityBase,
+              unitUsed: newItem.unitUsed,
               previousStatus: oldItem.status || 'pending',
-              newStatus: newItemStatus
+              newStatus: newItemStatus,
+              orderCreatedAt: order.createdAt
             }
           });
         }

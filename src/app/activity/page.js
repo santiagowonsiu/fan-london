@@ -192,10 +192,19 @@ export default function ActivityLogPage() {
     if (log.action === 'internal_order_item_status_changed' && log.details) {
       return (
         <div style={{ fontSize: 13, color: '#4b5563' }}>
+          <div style={{ marginBottom: 6 }}>
+            <strong>Order:</strong> {log.details.orderNumber || 'N/A'}
+            {log.details.orderGroup && ` (${log.details.orderGroup})`}
+          </div>
           <div>Department: <strong>{log.details.department}</strong></div>
-          {log.details.orderGroup && <div>Order: {log.details.orderGroup}</div>}
-          <div style={{ marginTop: 6 }}>
-            Status changed: <span style={{ color: '#dc2626' }}>{log.details.previousStatus}</span> → <span style={{ color: '#059669' }}>{log.details.newStatus}</span>
+          {log.details.itemType && <div>Item Type: {log.details.itemType}</div>}
+          {log.details.quantityPack && (
+            <div>Quantity: {log.details.quantityPack} {log.details.unitUsed === 'pack' ? 'packs' : 'base units'}</div>
+          )}
+          <div style={{ marginTop: 8, padding: '8px 12px', background: '#f3f4f6', borderRadius: 4 }}>
+            Status: <span style={{ color: '#dc2626', fontWeight: 600 }}>{log.details.previousStatus}</span> 
+            {' → '} 
+            <span style={{ color: '#059669', fontWeight: 600 }}>{log.details.newStatus}</span>
           </div>
         </div>
       );
@@ -204,9 +213,24 @@ export default function ActivityLogPage() {
     if (log.action === 'internal_order_deleted' && log.details) {
       return (
         <div style={{ fontSize: 13, color: '#4b5563' }}>
+          {log.details.orderNumber && (
+            <div style={{ marginBottom: 6 }}>
+              <strong>Order:</strong> {log.details.orderNumber}
+              {log.details.orderGroup && ` (${log.details.orderGroup})`}
+            </div>
+          )}
           {log.details.department && <div>Department: <strong>{log.details.department}</strong></div>}
-          {log.details.orderGroup && <div>Order: {log.details.orderGroup}</div>}
-          {log.details.itemCount && <div>Items: {log.details.itemCount}</div>}
+          {log.details.itemCount !== undefined && <div>Total Items: {log.details.itemCount}</div>}
+          {log.details.action === 'item_removed' && (
+            <div style={{ marginTop: 6, color: '#dc2626' }}>
+              ⚠️ Item removed from order: <strong>{log.details.itemName}</strong>
+            </div>
+          )}
+          {log.details.createdAt && (
+            <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+              Order was created: {new Date(log.details.createdAt).toLocaleString()}
+            </div>
+          )}
         </div>
       );
     }

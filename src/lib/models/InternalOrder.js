@@ -19,6 +19,7 @@ const internalOrderItemSchema = new mongoose.Schema({
 
 const internalOrderSchema = new mongoose.Schema(
   {
+    orderNumber: { type: String, unique: true, required: true }, // e.g., "IO-20251021-001"
     department: { 
       type: String, 
       enum: ['Kitchen', 'Bar', 'FOH'], 
@@ -35,6 +36,18 @@ const internalOrderSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Auto-generate order number before saving
+internalOrderSchema.pre('save', async function(next) {
+  if (!this.orderNumber) {
+    const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const count = await mongoose.model('InternalOrder').countDocuments({
+      createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+    });
+    this.orderNumber = `IO-${date}-${String(count + 1).padStart(3, '0')}`;
+  }
+  next();
+});
 
 internalOrderSchema.index({ createdAt: -1 });
 internalOrderSchema.index({ status: 1 });
