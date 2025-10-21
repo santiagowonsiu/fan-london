@@ -157,45 +157,95 @@ export default function InternalOrdersPage() {
   async function updateItemStatus(orderId, itemIndex, newStatus) {
     try {
       const order = orders.find(o => o._id === orderId);
-      if (!order) return;
+      if (!order) {
+        console.error('Order not found:', orderId);
+        return;
+      }
 
-      // Preserve all item fields and only update status
-      const updatedItems = order.items.map((item, idx) => {
-        if (idx === itemIndex) {
-          return {
-            itemId: item.itemId?._id || item.itemId,
-            quantity: item.quantity,
-            quantityBase: item.quantityBase,
-            quantityPack: item.quantityPack,
-            unitUsed: item.unitUsed,
-            hasStock: item.hasStock,
-            needsToBuy: item.needsToBuy,
-            status: newStatus,
-            statusChangedAt: item.statusChangedAt,
-            previousStatus: item.previousStatus,
-            _id: item._id
-          };
-        }
-        return {
-          itemId: item.itemId?._id || item.itemId,
-          quantity: item.quantity,
-          quantityBase: item.quantityBase,
-          quantityPack: item.quantityPack,
-          unitUsed: item.unitUsed,
-          hasStock: item.hasStock,
-          needsToBuy: item.needsToBuy,
-          status: item.status || 'pending',
-          statusChangedAt: item.statusChangedAt,
-          previousStatus: item.previousStatus,
-          _id: item._id
-        };
-      });
+      console.log('Before update - Order:', order);
+      console.log('Item to update:', order.items[itemIndex]);
 
-      console.log('Updating order:', orderId, 'Item:', itemIndex, 'New status:', newStatus);
-      await updateInternalOrder(orderId, { items: updatedItems });
-      await loadOrders();
+      // Create a copy of items array with the updated status
+      const updatedItems = order.items.map((item, idx) => ({
+        ...item,
+        itemId: item.itemId?._id || item.itemId,
+        status: idx === itemIndex ? newStatus : (item.status || 'pending')
+      }));
+
+      console.log('Sending update - Order ID:', orderId);
+      console.log('Updated items:', updatedItems);
+      
+      const response = await updateInternalOrder(orderId, { items: updatedItems });
+      console.log('Update response:', response);
+      
+      // Update local state immediately for better UX
+      setOrders(prevOrders => 
+        prevOrders.map(o => 
+          o._id === orderId ? response : o
+        )
+      );
     } catch (e) {
       console.error('Update error:', e);
+      alert('Failed to update: ' + e.message);
+    }
+  }
+
+  async function deleteOrder(orderId) {
+    const justification = prompt('Why are you deleting this order?');
+    if (!justification || !justification.trim()) {
+      alert('Justification is required');
+      return;
+    }
+    if (!confirm('Are you sure you want to delete this entire order?')) return;
+
+    try {
+      const res = await fetch(`/api/internal-orders/${orderId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete order');
+      
+      // Log to activity
+      await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'internal_order_deleted',
+          entityType: 'internal_order',
+          entityId: orderId,
+          entityName: 'Internal Order',
+          justification: justification.trim()
+        })
+      });
+
+      loadOrders();
+      alert('Order deleted');
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function deleteOrderItem(orderId, itemIndex) {
+    const justification = prompt('Why are you deleting this item from the order?');
+    if (!justification || !justification.trim()) {
+      alert('Justification is required');
+      return;
+    }
+    if (!confirm('Are you sure you want to delete this item?')) return;
+
+    try {
+      const order = orders.find(o => o._id === orderId);
+      if (!order) return;
+
+      const updatedItems = order.items.filter((_, idx) => idx !== itemIndex);
+      
+      if (updatedItems.length === 0) {
+        // If last item, delete whole order
+        await deleteOrder(orderId);
+        return;
+      }
+
+      await updateInternalOrder(orderId, { items: updatedItems });
+      loadOrders();
+      alert('Item removed from order');
+    } catch (e) {
       alert(e.message);
     }
   }
@@ -495,7 +545,7 @@ export default function InternalOrdersPage() {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
                         <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
                           {new Date(order.createdAt).toLocaleString('en-GB', {
@@ -516,6 +566,22 @@ export default function InternalOrdersPage() {
                         }}>
                           {order.department}
                         </span>
+                        <button
+                          type="button"
+                          onClick={() => deleteOrder(order._id)}
+                          style={{
+                            border: '1px solid #dc2626',
+                            background: 'white',
+                            color: '#dc2626',
+                            fontSize: 12,
+                            padding: '4px 8px',
+                            cursor: 'pointer',
+                            borderRadius: 4
+                          }}
+                          title="Delete entire order"
+                        >
+                          🗑 Delete Order
+                        </button>
                       </div>
                       {order.orderGroup && (
                         <div style={{ fontSize: 14, color: '#4b5563', marginBottom: 4 }}>
@@ -560,7 +626,7 @@ export default function InternalOrdersPage() {
                         <th className="th" style={{ textAlign: 'right', minWidth: 100 }}>Quantity</th>
                         <th className="th" style={{ minWidth: 110 }}>Stock Status</th>
                         <th className="th" style={{ minWidth: 100 }}>Item Status</th>
-                        <th className="th" style={{ minWidth: 120 }}>Actions</th>
+                        <th className="th" style={{ minWidth: 150 }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -606,78 +672,112 @@ export default function InternalOrdersPage() {
                           </td>
                           <td className="td">
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap' }}>
-                              {item.status !== 'purchased' && (
-                                <button
-                                  type="button"
-                                  onClick={() => updateItemStatus(order._id, idx, 'purchased')}
-                                  style={{ 
-                                    border: '1px solid #059669',
-                                    background: 'white',
-                                    color: '#059669',
-                                    fontSize: 18,
-                                    padding: '6px',
-                                    cursor: 'pointer',
-                                    borderRadius: 6,
-                                    lineHeight: 1,
-                                    width: 32,
-                                    height: 32,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                  }}
-                                  title="Mark as purchased"
-                                >
-                                  ✓
-                                </button>
-                              )}
-                              {item.status !== 'rejected' && (
-                                <button
-                                  type="button"
-                                  onClick={() => updateItemStatus(order._id, idx, 'rejected')}
-                                  style={{ 
-                                    border: '1px solid #dc2626',
-                                    background: 'white',
-                                    color: '#dc2626',
-                                    fontSize: 18,
-                                    padding: '6px',
-                                    cursor: 'pointer',
-                                    borderRadius: 6,
-                                    lineHeight: 1,
-                                    width: 32,
-                                    height: 32,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                  }}
-                                  title="Reject item"
-                                >
-                                  ✗
-                                </button>
-                              )}
-                              {item.status !== 'pending' && (
-                                <button
-                                  type="button"
-                                  onClick={() => updateItemStatus(order._id, idx, 'pending')}
-                                  style={{ 
-                                    border: '1px solid #f59e0b',
-                                    background: 'white',
-                                    color: '#f59e0b',
-                                    fontSize: 18,
-                                    padding: '6px',
-                                    cursor: 'pointer',
-                                    borderRadius: 6,
-                                    lineHeight: 1,
-                                    width: 32,
-                                    height: 32,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                  }}
-                                  title="Mark as pending"
-                                >
-                                  ↺
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  updateItemStatus(order._id, idx, 'purchased');
+                                }}
+                                disabled={item.status === 'purchased'}
+                                style={{ 
+                                  border: '1px solid #059669',
+                                  background: item.status === 'purchased' ? '#d1fae5' : 'white',
+                                  color: '#059669',
+                                  fontSize: 18,
+                                  padding: '6px',
+                                  cursor: item.status === 'purchased' ? 'default' : 'pointer',
+                                  borderRadius: 6,
+                                  lineHeight: 1,
+                                  width: 32,
+                                  height: 32,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  opacity: item.status === 'purchased' ? 0.5 : 1
+                                }}
+                                title="Mark as purchased"
+                              >
+                                ✓
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  updateItemStatus(order._id, idx, 'rejected');
+                                }}
+                                disabled={item.status === 'rejected'}
+                                style={{ 
+                                  border: '1px solid #dc2626',
+                                  background: item.status === 'rejected' ? '#fee2e2' : 'white',
+                                  color: '#dc2626',
+                                  fontSize: 18,
+                                  padding: '6px',
+                                  cursor: item.status === 'rejected' ? 'default' : 'pointer',
+                                  borderRadius: 6,
+                                  lineHeight: 1,
+                                  width: 32,
+                                  height: 32,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  opacity: item.status === 'rejected' ? 0.5 : 1
+                                }}
+                                title="Reject item"
+                              >
+                                ✗
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  updateItemStatus(order._id, idx, 'pending');
+                                }}
+                                disabled={item.status === 'pending'}
+                                style={{ 
+                                  border: '1px solid #f59e0b',
+                                  background: item.status === 'pending' ? '#fef3c7' : 'white',
+                                  color: '#f59e0b',
+                                  fontSize: 18,
+                                  padding: '6px',
+                                  cursor: item.status === 'pending' ? 'default' : 'pointer',
+                                  borderRadius: 6,
+                                  lineHeight: 1,
+                                  width: 32,
+                                  height: 32,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  opacity: item.status === 'pending' ? 0.5 : 1
+                                }}
+                                title="Mark as pending"
+                              >
+                                ↺
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  deleteOrderItem(order._id, idx);
+                                }}
+                                style={{ 
+                                  border: '1px solid #6b7280',
+                                  background: 'white',
+                                  color: '#6b7280',
+                                  fontSize: 16,
+                                  padding: '6px',
+                                  cursor: 'pointer',
+                                  borderRadius: 6,
+                                  lineHeight: 1,
+                                  width: 32,
+                                  height: 32,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                                title="Delete item"
+                              >
+                                🗑
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -704,61 +804,126 @@ export default function InternalOrdersPage() {
                 <th className="th" style={{ minWidth: 120 }}>Type</th>
                 <th className="th" style={{ textAlign: 'right', minWidth: 90 }}>Quantity</th>
                 <th className="th" style={{ minWidth: 100 }}>Stock Status</th>
+                <th className="th" style={{ minWidth: 120 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td className="td" colSpan={7}>Loading...</td></tr>
+                <tr><td className="td" colSpan={8}>Loading...</td></tr>
               ) : allPendingItems.length === 0 ? (
-                <tr><td className="td" colSpan={7}>No pending items</td></tr>
-              ) : allPendingItems.map((item, idx) => (
-                <tr key={idx}>
-                  <td className="td" style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
-                    {new Date(item.orderCreatedAt).toLocaleString('en-GB', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </td>
-                  <td className="td">
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: 4,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      background: '#e0e7ff',
-                      color: '#3730a3'
-                    }}>
-                      {item.department}
-                    </span>
-                  </td>
-                  <td className="td" style={{ fontSize: 13 }}>{item.orderGroup || '-'}</td>
-                  <td className="td">{item.itemId?.name || '-'}</td>
-                  <td className="td" style={{ color: '#6b7280', fontSize: 13 }}>{item.itemId?.type || '-'}</td>
-                  <td className="td" style={{ textAlign: 'right' }}>
-                    <div style={{ fontWeight: 600 }}>
-                      {(item.quantityPack || item.quantity || 0).toFixed(2)} {item.itemId?.purchasePackUnit || 'unit'}
-                    </div>
-                    <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                      ({(item.quantityBase || item.quantity || 0).toFixed(2)} {item.itemId?.baseContentUnit || 'unit'})
-                    </div>
-                  </td>
-                  <td className="td">
-                    <span style={{
-                      padding: '4px 10px',
-                      borderRadius: 4,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      background: item.hasStock ? '#d1fae5' : '#fee2e2',
-                      color: item.hasStock ? '#065f46' : '#991b1b'
-                    }}>
-                      {item.hasStock ? '✓ In Stock' : '✗ Need to Buy'}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                <tr><td className="td" colSpan={8}>No pending items</td></tr>
+              ) : allPendingItems.map((item, globalIdx) => {
+                // Find the order and item index
+                const order = orders.find(o => o._id === item.orderId);
+                const itemIdx = order?.items.findIndex(i => i._id === item._id);
+                
+                return (
+                  <tr key={globalIdx}>
+                    <td className="td" style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
+                      {new Date(item.orderCreatedAt).toLocaleString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </td>
+                    <td className="td">
+                      <span style={{
+                        padding: '4px 8px',
+                        borderRadius: 4,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        background: '#e0e7ff',
+                        color: '#3730a3'
+                      }}>
+                        {item.department}
+                      </span>
+                    </td>
+                    <td className="td" style={{ fontSize: 13 }}>{item.orderGroup || '-'}</td>
+                    <td className="td">{item.itemId?.name || '-'}</td>
+                    <td className="td" style={{ color: '#6b7280', fontSize: 13 }}>{item.itemId?.type || '-'}</td>
+                    <td className="td" style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 600 }}>
+                        {(item.quantityPack || item.quantity || 0).toFixed(2)} {item.itemId?.purchasePackUnit || 'unit'}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#9ca3af' }}>
+                        ({(item.quantityBase || item.quantity || 0).toFixed(2)} {item.itemId?.baseContentUnit || 'unit'})
+                      </div>
+                    </td>
+                    <td className="td">
+                      <span style={{
+                        padding: '4px 10px',
+                        borderRadius: 4,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: item.hasStock ? '#d1fae5' : '#fee2e2',
+                        color: item.hasStock ? '#065f46' : '#991b1b'
+                      }}>
+                        {item.hasStock ? '✓ In Stock' : '✗ Need to Buy'}
+                      </span>
+                    </td>
+                    <td className="td">
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (order && itemIdx !== undefined) {
+                              updateItemStatus(item.orderId, itemIdx, 'purchased');
+                            }
+                          }}
+                          style={{ 
+                            border: '1px solid #059669',
+                            background: 'white',
+                            color: '#059669',
+                            fontSize: 18,
+                            padding: '6px',
+                            cursor: 'pointer',
+                            borderRadius: 6,
+                            lineHeight: 1,
+                            width: 32,
+                            height: 32,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title="Mark as purchased"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (order && itemIdx !== undefined) {
+                              updateItemStatus(item.orderId, itemIdx, 'rejected');
+                            }
+                          }}
+                          style={{ 
+                            border: '1px solid #dc2626',
+                            background: 'white',
+                            color: '#dc2626',
+                            fontSize: 18,
+                            padding: '6px',
+                            cursor: 'pointer',
+                            borderRadius: 6,
+                            lineHeight: 1,
+                            width: 32,
+                            height: 32,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title="Reject item"
+                        >
+                          ✗
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

@@ -10,7 +10,8 @@ const activityLogSchema = new mongoose.Schema(
         'product_deleted',
         'transaction_edited',
         'transaction_deleted',
-        'internal_order_item_status_changed'
+        'internal_order_item_status_changed',
+        'internal_order_deleted'
       ],
       required: true
     },
