@@ -171,10 +171,13 @@ export default function InternalOrdersPage() {
 
   // Flatten all items for "All Pending" view
   const allPendingItems = orders
-    .filter(order => order.overallStatus !== 'completed' && order.overallStatus !== 'rejected')
+    .filter(order => {
+      const status = order.overallStatus || 'pending';
+      return status !== 'completed' && status !== 'rejected';
+    })
     .flatMap(order => 
       order.items
-        .filter(item => item.status === 'pending')
+        .filter(item => (item.status || 'pending') === 'pending')
         .map(item => ({
           ...item,
           orderId: order._id,
@@ -443,7 +446,7 @@ export default function InternalOrdersPage() {
             <div style={{ padding: 20, textAlign: 'center', color: '#6b7280' }}>No orders found</div>
           ) : (
             orders.map(order => {
-              const pendingCount = order.items.filter(i => i.status === 'pending').length;
+              const pendingCount = order.items.filter(i => (i.status || 'pending') === 'pending').length;
               const purchasedCount = order.items.filter(i => i.status === 'purchased').length;
               const rejectedCount = order.items.filter(i => i.status === 'rejected').length;
 
@@ -505,7 +508,7 @@ export default function InternalOrdersPage() {
                           order.overallStatus === 'completed' ? '#065f46' : 
                           order.overallStatus === 'rejected' ? '#991b1b' : '#92400e'
                       }}>
-                        {order.overallStatus.toUpperCase()}
+                        {(order.overallStatus || 'pending').toUpperCase()}
                       </span>
                       <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
                         {purchasedCount > 0 && `${purchasedCount} purchased`}
@@ -565,7 +568,7 @@ export default function InternalOrdersPage() {
                                 item.status === 'purchased' ? '#065f46' : 
                                 item.status === 'rejected' ? '#991b1b' : '#92400e'
                             }}>
-                              {item.status.toUpperCase()}
+                              {(item.status || 'pending').toUpperCase()}
                             </span>
                           </td>
                           <td className="td">
