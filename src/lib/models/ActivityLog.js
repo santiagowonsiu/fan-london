@@ -8,15 +8,15 @@ const activityLogSchema = new mongoose.Schema(
         'product_added',
         'product_edited',
         'product_deleted',
-        'transaction_added',
         'transaction_edited',
-        'transaction_deleted'
+        'transaction_deleted',
+        'internal_order_item_status_changed'
       ],
       required: true
     },
     entityType: {
       type: String,
-      enum: ['product', 'transaction'],
+      enum: ['product', 'transaction', 'internal_order'],
       required: true
     },
     entityId: {

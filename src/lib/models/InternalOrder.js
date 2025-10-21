@@ -6,19 +6,31 @@ const internalOrderItemSchema = new mongoose.Schema({
   quantityBase: { type: Number },
   quantityPack: { type: Number },
   unitUsed: { type: String, enum: ['base', 'pack'] },
-  hasStock: { type: Boolean }, // Calculated: whether item is in stock
-  needsToBuy: { type: Boolean }, // Calculated: whether needs purchasing
+  hasStock: { type: Boolean },
+  needsToBuy: { type: Boolean },
+  status: { 
+    type: String, 
+    enum: ['pending', 'purchased', 'rejected'], 
+    default: 'pending' 
+  },
+  statusChangedAt: { type: Date }, // Track when status first changed from pending
+  previousStatus: { type: String }, // Track for activity logging
 });
 
 const internalOrderSchema = new mongoose.Schema(
   {
-    orderGroup: { type: String }, // e.g., "Morning - Oct 21", "Afternoon - Oct 21"
-    items: [internalOrderItemSchema],
-    status: { 
+    department: { 
       type: String, 
-      enum: ['pending', 'purchased', 'rejected'], 
-      default: 'pending' 
+      enum: ['Kitchen', 'Bar', 'FOH'], 
+      required: true 
     },
+    orderGroup: { type: String }, // Optional name
+    items: [internalOrderItemSchema],
+    overallStatus: { 
+      type: String, 
+      enum: ['pending', 'completed', 'rejected'], 
+      default: 'pending' 
+    }, // Auto-calculated based on items
     notes: { type: String },
   },
   { timestamps: true }

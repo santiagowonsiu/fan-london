@@ -10,7 +10,8 @@ const ACTION_LABELS = {
   product_edited: 'Product Edited',
   product_deleted: 'Product Deleted',
   transaction_edited: 'Transaction Edited',
-  transaction_deleted: 'Transaction Deleted'
+  transaction_deleted: 'Transaction Deleted',
+  internal_order_item_status_changed: 'Internal Order Status Changed'
 };
 
 const ACTION_COLORS = {
@@ -18,7 +19,8 @@ const ACTION_COLORS = {
   product_edited: { bg: '#dbeafe', color: '#1e40af' },
   product_deleted: { bg: '#fee2e2', color: '#991b1b' },
   transaction_edited: { bg: '#dbeafe', color: '#1e40af' },
-  transaction_deleted: { bg: '#fee2e2', color: '#991b1b' }
+  transaction_deleted: { bg: '#fee2e2', color: '#991b1b' },
+  internal_order_item_status_changed: { bg: '#fef3c7', color: '#92400e' }
 };
 
 export default function ActivityLogPage() {
@@ -185,6 +187,18 @@ export default function ActivityLogPage() {
       }
     }
 
+    if (log.action === 'internal_order_item_status_changed' && log.details) {
+      return (
+        <div style={{ fontSize: 13, color: '#4b5563' }}>
+          <div>Department: <strong>{log.details.department}</strong></div>
+          {log.details.orderGroup && <div>Order: {log.details.orderGroup}</div>}
+          <div style={{ marginTop: 6 }}>
+            Status changed: <span style={{ color: '#dc2626' }}>{log.details.previousStatus}</span> → <span style={{ color: '#059669' }}>{log.details.newStatus}</span>
+          </div>
+        </div>
+      );
+    }
+
     return null;
   }
 
@@ -226,6 +240,7 @@ export default function ActivityLogPage() {
           <option value="all">All Entities</option>
           <option value="product">Products</option>
           <option value="transaction">Transactions</option>
+          <option value="internal_order">Internal Orders</option>
         </select>
 
         <select
@@ -239,6 +254,7 @@ export default function ActivityLogPage() {
           <option value="product_deleted">Product Deleted</option>
           <option value="transaction_edited">Transaction Edited</option>
           <option value="transaction_deleted">Transaction Deleted</option>
+          <option value="internal_order_item_status_changed">Internal Order Status Changed</option>
         </select>
 
         <select

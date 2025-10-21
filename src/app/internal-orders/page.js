@@ -9,16 +9,18 @@ export default function InternalOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState('byOrder'); // 'byOrder' or 'allPending'
+  const [viewMode, setViewMode] = useState('byOrder');
   const [statusFilter, setStatusFilter] = useState('all');
   
   // Add order form
   const [showAddForm, setShowAddForm] = useState(false);
+  const [department, setDepartment] = useState('Kitchen');
   const [orderGroup, setOrderGroup] = useState('');
   const [orderItems, setOrderItems] = useState([]);
   const [itemSearch, setItemSearch] = useState('');
   const [itemSuggestions, setItemSuggestions] = useState([]);
   const [stockData, setStockData] = useState({});
+  const [orderNotes, setOrderNotes] = useState('');
 
   useEffect(() => {
     loadOrders();
@@ -80,7 +82,8 @@ export default function InternalOrdersPage() {
       baseContentUnit: item.baseContentUnit || 'unit',
       purchasePackUnit: item.purchasePackUnit || 'unit',
       quantity: 1,
-      unitUsed: 'pack'
+      unitUsed: 'pack',
+      status: 'pending'
     }]);
     setItemSearch('');
     setItemSuggestions([]);
@@ -94,7 +97,6 @@ export default function InternalOrdersPage() {
     const updated = [...orderItems];
     updated[index][field] = value;
     
-    // Calculate both quantities
     if (field === 'quantity' || field === 'unitUsed') {
       const qty = Number(updated[index].quantity);
       const baseContent = updated[index].baseContentValue;
@@ -119,7 +121,7 @@ export default function InternalOrdersPage() {
 
     const itemsToSave = orderItems.map(item => {
       const stock = stockData[item.itemId] || { stockPack: 0 };
-      const hasStock = stock.stockPack >= item.quantityPack;
+      const hasStock = stock.stockPack >= (item.quantityPack || item.quantity);
       
       return {
         itemId: item.itemId,
@@ -128,18 +130,23 @@ export default function InternalOrdersPage() {
         quantityPack: item.quantityPack,
         unitUsed: item.unitUsed,
         hasStock,
-        needsToBuy: !hasStock
+        needsToBuy: !hasStock,
+        status: 'pending'
       };
     });
 
     try {
       await createInternalOrder({
-        orderGroup: orderGroup || `Order - ${new Date().toLocaleDateString()}`,
-        items: itemsToSave
+        department,
+        orderGroup: orderGroup.trim() || undefined,
+        items: itemsToSave,
+        notes: orderNotes.trim() || undefined
       });
       setShowAddForm(false);
+      setDepartment('Kitchen');
       setOrderGroup('');
       setOrderItems([]);
+      setOrderNotes('');
       loadOrders();
       alert('Internal order created');
     } catch (e) {
@@ -147,9 +154,15 @@ export default function InternalOrdersPage() {
     }
   }
 
-  async function updateOrderStatus(orderId, newStatus) {
+  async function updateItemStatus(orderId, itemIndex, newStatus) {
     try {
-      await updateInternalOrder(orderId, { status: newStatus });
+      const order = orders.find(o => o._id === orderId);
+      if (!order) return;
+
+      const updatedItems = [...order.items];
+      updatedItems[itemIndex] = { ...updatedItems[itemIndex], status: newStatus };
+
+      await updateInternalOrder(orderId, { items: updatedItems });
       loadOrders();
     } catch (e) {
       alert(e.message);
@@ -158,14 +171,17 @@ export default function InternalOrdersPage() {
 
   // Flatten all items for "All Pending" view
   const allPendingItems = orders
-    .filter(order => order.status === 'pending')
+    .filter(order => order.overallStatus !== 'completed' && order.overallStatus !== 'rejected')
     .flatMap(order => 
-      order.items.map(item => ({
-        ...item,
-        orderId: order._id,
-        orderGroup: order.orderGroup,
-        orderCreatedAt: order.createdAt
-      }))
+      order.items
+        .filter(item => item.status === 'pending')
+        .map(item => ({
+          ...item,
+          orderId: order._id,
+          department: order.department,
+          orderGroup: order.orderGroup,
+          orderCreatedAt: order.createdAt
+        }))
     );
 
   return (
@@ -216,7 +232,7 @@ export default function InternalOrdersPage() {
         >
           <option value="all">All Statuses</option>
           <option value="pending">Pending</option>
-          <option value="purchased">Purchased</option>
+          <option value="completed">Completed</option>
           <option value="rejected">Rejected</option>
         </select>
 
@@ -238,17 +254,35 @@ export default function InternalOrdersPage() {
         }}>
           <h3 style={{ marginTop: 0, marginBottom: 16 }}>New Internal Order</h3>
           
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
-              Order Group <span style={{ fontSize: 13, fontWeight: 400, color: '#6b7280' }}>(Optional)</span>
-            </label>
-            <input
-              className="input"
-              placeholder="e.g., Morning - Oct 21, Afternoon, etc."
-              value={orderGroup}
-              onChange={(e) => setOrderGroup(e.target.value)}
-              style={{ maxWidth: 400 }}
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                Department <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <select
+                className="select"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+                style={{ width: '100%' }}
+                required
+              >
+                <option value="Kitchen">Kitchen</option>
+                <option value="Bar">Bar</option>
+                <option value="FOH">FOH (Front of House)</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                Order Name <span style={{ fontSize: 13, fontWeight: 400, color: '#6b7280' }}>(Optional)</span>
+              </label>
+              <input
+                className="input input-full"
+                placeholder="e.g., Morning order, Lunch prep, etc."
+                value={orderGroup}
+                onChange={(e) => setOrderGroup(e.target.value)}
+              />
+            </div>
           </div>
 
           <div style={{ marginBottom: 16, position: 'relative' }}>
@@ -369,8 +403,28 @@ export default function InternalOrdersPage() {
             </div>
           )}
 
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+              Notes <span style={{ fontSize: 13, fontWeight: 400, color: '#6b7280' }}>(Optional)</span>
+            </label>
+            <textarea
+              className="input"
+              placeholder="Order notes..."
+              value={orderNotes}
+              onChange={(e) => setOrderNotes(e.target.value)}
+              rows={2}
+              style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit' }}
+            />
+          </div>
+
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-            <button type="button" className="button" onClick={() => { setShowAddForm(false); setOrderItems([]); }}>
+            <button type="button" className="button" onClick={() => { 
+              setShowAddForm(false); 
+              setOrderItems([]); 
+              setOrderGroup('');
+              setOrderNotes('');
+              setDepartment('Kitchen');
+            }}>
               Cancel
             </button>
             <button type="button" className="button primary" onClick={submitOrder}>
@@ -388,100 +442,173 @@ export default function InternalOrdersPage() {
           ) : orders.length === 0 ? (
             <div style={{ padding: 20, textAlign: 'center', color: '#6b7280' }}>No orders found</div>
           ) : (
-            orders.map(order => (
-              <div
-                key={order._id}
-                style={{
-                  marginBottom: 16,
-                  padding: 16,
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: 16 }}>
-                      {order.orderGroup || 'Unnamed Order'}
-                    </h3>
-                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-                      {new Date(order.createdAt).toLocaleString()}
+            orders.map(order => {
+              const pendingCount = order.items.filter(i => i.status === 'pending').length;
+              const purchasedCount = order.items.filter(i => i.status === 'purchased').length;
+              const rejectedCount = order.items.filter(i => i.status === 'rejected').length;
+
+              return (
+                <div
+                  key={order._id}
+                  style={{
+                    marginBottom: 16,
+                    padding: 16,
+                    background: 'white',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>
+                          {new Date(order.createdAt).toLocaleString('en-GB', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </h3>
+                        <span style={{
+                          padding: '4px 10px',
+                          borderRadius: 4,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          background: '#e0e7ff',
+                          color: '#3730a3'
+                        }}>
+                          {order.department}
+                        </span>
+                      </div>
+                      {order.orderGroup && (
+                        <div style={{ fontSize: 14, color: '#4b5563', marginBottom: 4 }}>
+                          {order.orderGroup}
+                        </div>
+                      )}
+                      {order.notes && (
+                        <div style={{ fontSize: 13, fontStyle: 'italic', color: '#6b7280', marginTop: 6 }}>
+                          Note: {order.notes}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{
+                        padding: '6px 14px',
+                        borderRadius: 6,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        background: 
+                          order.overallStatus === 'completed' ? '#d1fae5' : 
+                          order.overallStatus === 'rejected' ? '#fee2e2' : '#fef3c7',
+                        color: 
+                          order.overallStatus === 'completed' ? '#065f46' : 
+                          order.overallStatus === 'rejected' ? '#991b1b' : '#92400e'
+                      }}>
+                        {order.overallStatus.toUpperCase()}
+                      </span>
+                      <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
+                        {purchasedCount > 0 && `${purchasedCount} purchased`}
+                        {purchasedCount > 0 && rejectedCount > 0 && ', '}
+                        {rejectedCount > 0 && `${rejectedCount} rejected`}
+                        {pendingCount > 0 && `, ${pendingCount} pending`}
+                      </div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span style={{
-                      padding: '4px 12px',
-                      borderRadius: 4,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      background: order.status === 'purchased' ? '#d1fae5' : order.status === 'rejected' ? '#fee2e2' : '#fef3c7',
-                      color: order.status === 'purchased' ? '#065f46' : order.status === 'rejected' ? '#991b1b' : '#92400e'
-                    }}>
-                      {order.status.toUpperCase()}
-                    </span>
-                    {order.status === 'pending' && (
-                      <>
-                        <button
-                          type="button"
-                          className="button"
-                          onClick={() => updateOrderStatus(order._id, 'purchased')}
-                          style={{ background: '#059669', color: 'white', fontSize: 13 }}
-                        >
-                          Mark Purchased
-                        </button>
-                        <button
-                          type="button"
-                          className="button"
-                          onClick={() => updateOrderStatus(order._id, 'rejected')}
-                          style={{ background: '#dc2626', color: 'white', fontSize: 13 }}
-                        >
-                          Reject
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
 
-                <table className="table" style={{ fontSize: 13 }}>
-                  <thead>
-                    <tr>
-                      <th className="th">Item</th>
-                      <th className="th">Type</th>
-                      <th className="th" style={{ textAlign: 'right' }}>Quantity</th>
-                      <th className="th">Stock Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {order.items.map((item, idx) => (
-                      <tr key={idx}>
-                        <td className="td">{item.itemId?.name || '-'}</td>
-                        <td className="td" style={{ color: '#6b7280' }}>{item.itemId?.type || '-'}</td>
-                        <td className="td" style={{ textAlign: 'right' }}>
-                          <div style={{ fontWeight: 600 }}>
-                            {(item.quantityPack || item.quantity || 0).toFixed(2)} {item.itemId?.purchasePackUnit || 'unit'}
-                          </div>
-                          <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                            ({(item.quantityBase || item.quantity || 0).toFixed(2)} {item.itemId?.baseContentUnit || 'unit'})
-                          </div>
-                        </td>
-                        <td className="td">
-                          <span style={{
-                            padding: '4px 10px',
-                            borderRadius: 4,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            background: item.hasStock ? '#d1fae5' : '#fee2e2',
-                            color: item.hasStock ? '#065f46' : '#991b1b'
-                          }}>
-                            {item.hasStock ? '✓ In Stock' : '✗ Need to Buy'}
-                          </span>
-                        </td>
+                  <table className="table" style={{ fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        <th className="th">Item</th>
+                        <th className="th">Type</th>
+                        <th className="th" style={{ textAlign: 'right' }}>Quantity</th>
+                        <th className="th">Stock Status</th>
+                        <th className="th">Item Status</th>
+                        <th className="th">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ))
+                    </thead>
+                    <tbody>
+                      {order.items.map((item, idx) => (
+                        <tr key={idx}>
+                          <td className="td">{item.itemId?.name || '-'}</td>
+                          <td className="td" style={{ color: '#6b7280' }}>{item.itemId?.type || '-'}</td>
+                          <td className="td" style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 600 }}>
+                              {(item.quantityPack || item.quantity || 0).toFixed(2)} {item.itemId?.purchasePackUnit || 'unit'}
+                            </div>
+                            <div style={{ fontSize: 11, color: '#9ca3af' }}>
+                              ({(item.quantityBase || item.quantity || 0).toFixed(2)} {item.itemId?.baseContentUnit || 'unit'})
+                            </div>
+                          </td>
+                          <td className="td">
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: 4,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              background: item.hasStock ? '#d1fae5' : '#fee2e2',
+                              color: item.hasStock ? '#065f46' : '#991b1b'
+                            }}>
+                              {item.hasStock ? '✓ In Stock' : '✗ Need to Buy'}
+                            </span>
+                          </td>
+                          <td className="td">
+                            <span style={{
+                              padding: '4px 10px',
+                              borderRadius: 4,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              background: 
+                                item.status === 'purchased' ? '#d1fae5' : 
+                                item.status === 'rejected' ? '#fee2e2' : '#fef3c7',
+                              color: 
+                                item.status === 'purchased' ? '#065f46' : 
+                                item.status === 'rejected' ? '#991b1b' : '#92400e'
+                            }}>
+                              {item.status.toUpperCase()}
+                            </span>
+                          </td>
+                          <td className="td">
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              {item.status !== 'purchased' && (
+                                <button
+                                  type="button"
+                                  className="button"
+                                  onClick={() => updateItemStatus(order._id, idx, 'purchased')}
+                                  style={{ background: '#059669', color: 'white', fontSize: 12, padding: '4px 10px' }}
+                                >
+                                  ✓ Purchased
+                                </button>
+                              )}
+                              {item.status !== 'rejected' && (
+                                <button
+                                  type="button"
+                                  className="button"
+                                  onClick={() => updateItemStatus(order._id, idx, 'rejected')}
+                                  style={{ background: '#dc2626', color: 'white', fontSize: 12, padding: '4px 10px' }}
+                                >
+                                  ✗ Reject
+                                </button>
+                              )}
+                              {item.status !== 'pending' && (
+                                <button
+                                  type="button"
+                                  className="button"
+                                  onClick={() => updateItemStatus(order._id, idx, 'pending')}
+                                  style={{ fontSize: 12, padding: '4px 10px' }}
+                                >
+                                  ↺ Pending
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })
           )}
         </div>
       )}
@@ -492,22 +619,22 @@ export default function InternalOrdersPage() {
           <table className="table">
             <thead>
               <tr>
-                <th className="th">Order Group</th>
-                <th className="th">Date/Time</th>
-                <th className="th">Item</th>
-                <th className="th">Type</th>
-                <th className="th" style={{ textAlign: 'right' }}>Quantity</th>
-                <th className="th">Stock Status</th>
+                <th className="th" style={{ minWidth: 140 }}>Date/Time</th>
+                <th className="th" style={{ minWidth: 90 }}>Department</th>
+                <th className="th" style={{ minWidth: 140 }}>Order Name</th>
+                <th className="th" style={{ minWidth: 200 }}>Item</th>
+                <th className="th" style={{ minWidth: 120 }}>Type</th>
+                <th className="th" style={{ textAlign: 'right', minWidth: 90 }}>Quantity</th>
+                <th className="th" style={{ minWidth: 100 }}>Stock Status</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td className="td" colSpan={6}>Loading...</td></tr>
+                <tr><td className="td" colSpan={7}>Loading...</td></tr>
               ) : allPendingItems.length === 0 ? (
-                <tr><td className="td" colSpan={6}>No pending items</td></tr>
+                <tr><td className="td" colSpan={7}>No pending items</td></tr>
               ) : allPendingItems.map((item, idx) => (
                 <tr key={idx}>
-                  <td className="td">{item.orderGroup || '-'}</td>
                   <td className="td" style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
                     {new Date(item.orderCreatedAt).toLocaleString('en-GB', {
                       day: '2-digit',
@@ -517,8 +644,21 @@ export default function InternalOrdersPage() {
                       minute: '2-digit'
                     })}
                   </td>
+                  <td className="td">
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      background: '#e0e7ff',
+                      color: '#3730a3'
+                    }}>
+                      {item.department}
+                    </span>
+                  </td>
+                  <td className="td" style={{ fontSize: 13 }}>{item.orderGroup || '-'}</td>
                   <td className="td">{item.itemId?.name || '-'}</td>
-                  <td className="td" style={{ color: '#6b7280' }}>{item.itemId?.type || '-'}</td>
+                  <td className="td" style={{ color: '#6b7280', fontSize: 13 }}>{item.itemId?.type || '-'}</td>
                   <td className="td" style={{ textAlign: 'right' }}>
                     <div style={{ fontWeight: 600 }}>
                       {(item.quantityPack || item.quantity || 0).toFixed(2)} {item.itemId?.purchasePackUnit || 'unit'}
@@ -548,4 +688,3 @@ export default function InternalOrdersPage() {
     </div>
   );
 }
-
