@@ -41,6 +41,10 @@ export default function TransactionLogsPage() {
   const [editDraft, setEditDraft] = useState({ direction: '', quantity: '' });
   const [expandedId, setExpandedId] = useState(null);
 
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [itemsPerPage] = useState(50);
+
   useEffect(() => {
     loadTransactions();
     loadItems();
@@ -193,6 +197,18 @@ export default function TransactionLogsPage() {
   function toggleExpanded(id) {
     setExpandedId(expandedId === id ? null : id);
   }
+
+  // Paginate filtered results
+  const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
+  const paginatedRows = filteredRows.slice(
+    (page - 1) * itemsPerPage,
+    page * itemsPerPage
+  );
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [startDate, endDate, selectedItems, directionFilter]);
 
   return (
     <div>
@@ -403,9 +419,9 @@ export default function TransactionLogsPage() {
           <tbody>
             {loading ? (
               <tr><td className="td" colSpan={cols}>Loading...</td></tr>
-            ) : filteredRows.length === 0 ? (
+            ) : paginatedRows.length === 0 ? (
               <tr><td className="td" colSpan={cols}>No transactions found</td></tr>
-            ) : filteredRows.map((tx) => (
+            ) : paginatedRows.map((tx) => (
               <>
                 <tr key={tx._id} style={{ cursor: tx.observations ? 'pointer' : 'default' }} onClick={() => tx.observations && toggleExpanded(tx._id)}>
                   <td className="td" style={{ whiteSpace: 'nowrap' }}>
@@ -534,6 +550,31 @@ export default function TransactionLogsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {filteredRows.length > 0 && (
+        <div className="pagination">
+          <button 
+            type="button" 
+            className="button" 
+            onClick={() => setPage(p => Math.max(p - 1, 1))} 
+            disabled={page <= 1}
+          >
+            Prev
+          </button>
+          <span>
+            Page {page} / {totalPages} • Showing {paginatedRows.length} of {filteredRows.length} transactions
+          </span>
+          <button 
+            type="button" 
+            className="button" 
+            onClick={() => setPage(p => Math.min(p + 1, totalPages))} 
+            disabled={page >= totalPages}
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }
