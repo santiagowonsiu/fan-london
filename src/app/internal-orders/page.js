@@ -218,6 +218,9 @@ export default function InternalOrdersPage() {
   }
 
   async function deleteOrder(orderId) {
+    const order = orders.find(o => o._id === orderId);
+    if (!order) return;
+
     const justification = prompt('Why are you deleting this order?');
     if (!justification || !justification.trim()) {
       alert('Justification is required');
@@ -226,21 +229,32 @@ export default function InternalOrdersPage() {
     if (!confirm('Are you sure you want to delete this entire order?')) return;
 
     try {
-      const res = await fetch(`/api/internal-orders/${orderId}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete order');
-      
-      // Log to activity
-      await fetch('/api/activity-logs', {
+      // Log to activity BEFORE deleting
+      const logRes = await fetch('/api/activity-logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'internal_order_deleted',
           entityType: 'internal_order',
           entityId: orderId,
-          entityName: 'Internal Order',
-          justification: justification.trim()
+          entityName: `${order.department || 'Kitchen'} Order`,
+          justification: justification.trim(),
+          details: {
+            department: order.department,
+            orderGroup: order.orderGroup,
+            itemCount: order.items.length,
+            createdAt: order.createdAt
+          }
         })
       });
+
+      if (!logRes.ok) {
+        console.error('Failed to log activity');
+      }
+
+      // Then delete the order
+      const res = await fetch(`/api/internal-orders/${orderId}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete order');
 
       loadOrders();
       alert('Order deleted');
@@ -250,7 +264,12 @@ export default function InternalOrdersPage() {
   }
 
   async function deleteOrderItem(orderId, itemIndex) {
-    const justification = prompt('Why are you deleting this item from the order?');
+    const order = orders.find(o => o._id === orderId);
+    if (!order) return;
+
+    const itemToDelete = order.items[itemIndex];
+    
+    const justification = prompt(`Why are you deleting "${itemToDelete.itemId?.name}" from this order?`);
     if (!justification || !justification.trim()) {
       alert('Justification is required');
       return;
@@ -258,8 +277,24 @@ export default function InternalOrdersPage() {
     if (!confirm('Are you sure you want to delete this item?')) return;
 
     try {
-      const order = orders.find(o => o._id === orderId);
-      if (!order) return;
+      // Log to activity
+      await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'internal_order_deleted',
+          entityType: 'internal_order',
+          entityId: orderId,
+          entityName: itemToDelete.itemId?.name || 'Unknown Item',
+          justification: justification.trim(),
+          details: {
+            department: order.department,
+            orderGroup: order.orderGroup,
+            action: 'item_removed',
+            itemName: itemToDelete.itemId?.name
+          }
+        })
+      });
 
       const updatedItems = order.items.filter((_, idx) => idx !== itemIndex);
       

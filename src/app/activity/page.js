@@ -11,7 +11,8 @@ const ACTION_LABELS = {
   product_deleted: 'Product Deleted',
   transaction_edited: 'Transaction Edited',
   transaction_deleted: 'Transaction Deleted',
-  internal_order_item_status_changed: 'Internal Order Status Changed'
+  internal_order_item_status_changed: 'Internal Order Status Changed',
+  internal_order_deleted: 'Internal Order Deleted'
 };
 
 const ACTION_COLORS = {
@@ -20,7 +21,8 @@ const ACTION_COLORS = {
   product_deleted: { bg: '#fee2e2', color: '#991b1b' },
   transaction_edited: { bg: '#dbeafe', color: '#1e40af' },
   transaction_deleted: { bg: '#fee2e2', color: '#991b1b' },
-  internal_order_item_status_changed: { bg: '#fef3c7', color: '#92400e' }
+  internal_order_item_status_changed: { bg: '#fef3c7', color: '#92400e' },
+  internal_order_deleted: { bg: '#fee2e2', color: '#991b1b' }
 };
 
 export default function ActivityLogPage() {
@@ -199,6 +201,16 @@ export default function ActivityLogPage() {
       );
     }
 
+    if (log.action === 'internal_order_deleted' && log.details) {
+      return (
+        <div style={{ fontSize: 13, color: '#4b5563' }}>
+          {log.details.department && <div>Department: <strong>{log.details.department}</strong></div>}
+          {log.details.orderGroup && <div>Order: {log.details.orderGroup}</div>}
+          {log.details.itemCount && <div>Items: {log.details.itemCount}</div>}
+        </div>
+      );
+    }
+
     return null;
   }
 
@@ -255,6 +267,7 @@ export default function ActivityLogPage() {
           <option value="transaction_edited">Transaction Edited</option>
           <option value="transaction_deleted">Transaction Deleted</option>
           <option value="internal_order_item_status_changed">Internal Order Status Changed</option>
+          <option value="internal_order_deleted">Internal Order Deleted</option>
         </select>
 
         <select
