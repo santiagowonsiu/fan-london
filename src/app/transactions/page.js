@@ -80,17 +80,16 @@ export default function TransactionsPage() {
     
     // Calculate both base and pack quantities
     let quantityBase, quantityPack;
-    const baseContentValue = selectedItem.baseContentValue || 1;
-    const purchasePackQuantity = selectedItem.purchasePackQuantity || 1;
+    const baseContentValue = selectedItem.baseContentValue || 1; // e.g., 700 (ml per bottle)
     
     if (usePack) {
-      // User entered in pack units
+      // User entered in pack units (e.g., 2 bottles)
       quantityPack = qtyNum;
-      quantityBase = qtyNum * purchasePackQuantity * baseContentValue;
+      quantityBase = qtyNum * baseContentValue; // 2 × 700 = 1400ml
     } else {
-      // User entered in base units
+      // User entered in base units (e.g., 350ml)
       quantityBase = qtyNum;
-      quantityPack = qtyNum / (purchasePackQuantity * baseContentValue);
+      quantityPack = qtyNum / baseContentValue; // 350 ÷ 700 = 0.5 bottles
     }
     
     setSubmitting(true);
@@ -332,6 +331,28 @@ export default function TransactionsPage() {
             style={{ width: '100%', padding: '12px 16px', fontSize: 16 }}
             required
           />
+          
+          {/* Quantity Preview */}
+          {selectedItem && quantity && Number(quantity) > 0 && (
+            <div style={{ 
+              marginTop: 8, 
+              padding: '10px 12px', 
+              background: '#f0f9ff', 
+              borderRadius: 6,
+              fontSize: 13,
+              color: '#0369a1'
+            }}>
+              {usePack ? (
+                <>
+                  <strong>{quantity} {selectedItem.purchasePackUnit || 'unit'}</strong> = {(Number(quantity) * (selectedItem.baseContentValue || 1)).toFixed(2)} {selectedItem.baseContentUnit || 'unit'}
+                </>
+              ) : (
+                <>
+                  <strong>{quantity} {selectedItem.baseContentUnit || 'unit'}</strong> = {(Number(quantity) / (selectedItem.baseContentValue || 1)).toFixed(2)} {selectedItem.purchasePackUnit || 'unit'}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         {/* 5. Observations */}
