@@ -155,37 +155,64 @@ export default function InternalOrdersPage() {
   }
 
   async function updateItemStatus(orderId, itemIndex, newStatus) {
+    console.log('=== UPDATE ITEM STATUS ===');
+    console.log('Order ID:', orderId);
+    console.log('Item Index:', itemIndex);
+    console.log('New Status:', newStatus);
+    
     try {
       const order = orders.find(o => o._id === orderId);
       if (!order) {
-        console.error('Order not found:', orderId);
+        console.error('❌ Order not found in state:', orderId);
         return;
       }
 
-      console.log('Before update - Order:', order);
-      console.log('Item to update:', order.items[itemIndex]);
+      console.log('✓ Found order:', order._id);
+      console.log('  - Total items:', order.items.length);
+      console.log('  - Item to update:', order.items[itemIndex]);
 
-      // Create a copy of items array with the updated status
-      const updatedItems = order.items.map((item, idx) => ({
-        ...item,
-        itemId: item.itemId?._id || item.itemId,
-        status: idx === itemIndex ? newStatus : (item.status || 'pending')
-      }));
+      // Create a complete copy of items with the updated status
+      const updatedItems = order.items.map((item, idx) => {
+        const itemData = {
+          itemId: item.itemId?._id || item.itemId,
+          quantity: item.quantity,
+          quantityBase: item.quantityBase,
+          quantityPack: item.quantityPack,
+          unitUsed: item.unitUsed,
+          hasStock: item.hasStock,
+          needsToBuy: item.needsToBuy,
+          status: idx === itemIndex ? newStatus : (item.status || 'pending'),
+          _id: item._id
+        };
+        
+        if (idx === itemIndex) {
+          console.log('  ✓ Updating item', idx, 'status to:', newStatus);
+        }
+        
+        return itemData;
+      });
 
-      console.log('Sending update - Order ID:', orderId);
-      console.log('Updated items:', updatedItems);
+      console.log('📤 Sending API request...');
+      console.log('  Payload:', { items: updatedItems });
       
       const response = await updateInternalOrder(orderId, { items: updatedItems });
-      console.log('Update response:', response);
       
-      // Update local state immediately for better UX
-      setOrders(prevOrders => 
-        prevOrders.map(o => 
+      console.log('📥 API Response received:', response);
+      console.log('  - Response has items:', response.items?.length);
+      console.log('  - Item statuses:', response.items?.map(i => i.status));
+      
+      // Update local state
+      setOrders(prevOrders => {
+        const newOrders = prevOrders.map(o => 
           o._id === orderId ? response : o
-        )
-      );
+        );
+        console.log('✓ Local state updated');
+        return newOrders;
+      });
+      
+      console.log('=== UPDATE COMPLETE ===\n');
     } catch (e) {
-      console.error('Update error:', e);
+      console.error('❌ Update error:', e);
       alert('Failed to update: ' + e.message);
     }
   }

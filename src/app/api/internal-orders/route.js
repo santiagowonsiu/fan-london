@@ -5,20 +5,28 @@ import { InternalOrder } from '@/lib/models/InternalOrder';
 export async function POST(request) {
   await dbConnect();
   const body = await request.json();
-  const { orderGroup, items, notes } = body;
+  const { department, orderGroup, items, notes } = body;
 
+  if (!department) {
+    return NextResponse.json({ error: 'Department is required' }, { status: 400 });
+  }
   if (!items || items.length === 0) {
     return NextResponse.json({ error: 'At least one item required' }, { status: 400 });
   }
 
   try {
     const order = await InternalOrder.create({
+      department,
       orderGroup,
       items,
       notes,
-      status: 'pending'
+      overallStatus: 'pending'
     });
-    return NextResponse.json(order, { status: 201 });
+    
+    const populated = await InternalOrder.findById(order._id)
+      .populate('items.itemId', 'name type baseContentUnit purchasePackUnit');
+    
+    return NextResponse.json(populated, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
