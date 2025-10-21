@@ -427,15 +427,15 @@ export default function TransactionLogsPage() {
         <table className="table">
           <thead>
             <tr>
-              <th className="th">Date/Time</th>
-              <th className="th">Item</th>
-              <th className="th">Type</th>
-              <th className="th">Direction</th>
-              <th className="th" style={{ textAlign: 'right' }} title="Quantity in base content units">Base Qty</th>
-              <th className="th" style={{ textAlign: 'right' }} title="Quantity in purchase pack units">Pack Qty</th>
-              <th className="th" style={{ textAlign: 'right' }} title="Cumulative stock at this point in time">Stock at Time</th>
-              <th className="th">Person</th>
-              {isEditMode && <th className="th">Actions</th>}
+              <th className="th" style={{ minWidth: 140 }}>Date/Time</th>
+              <th className="th" style={{ minWidth: 200 }}>Item</th>
+              <th className="th" style={{ minWidth: 120 }}>Type</th>
+              <th className="th" style={{ minWidth: 90 }}>Direction</th>
+              <th className="th" style={{ textAlign: 'right', minWidth: 90 }} title="Quantity in base content units">Base Qty</th>
+              <th className="th" style={{ textAlign: 'right', minWidth: 90 }} title="Quantity in purchase pack units">Pack Qty</th>
+              <th className="th" style={{ textAlign: 'right', minWidth: 100 }} title="Cumulative stock at this point in time">Stock at Time</th>
+              <th className="th" style={{ minWidth: 100 }}>Person</th>
+              {isEditMode && <th className="th" style={{ minWidth: 180 }}>Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -446,7 +446,7 @@ export default function TransactionLogsPage() {
             ) : paginatedRows.map((tx) => (
               <>
                 <tr key={tx._id} style={{ cursor: tx.observations ? 'pointer' : 'default' }} onClick={() => tx.observations && toggleExpanded(tx._id)}>
-                  <td className="td" style={{ whiteSpace: 'nowrap' }}>
+                  <td className="td" style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
                     {new Date(tx.createdAt).toLocaleString('en-GB', {
                       day: '2-digit',
                       month: '2-digit',
@@ -455,15 +455,17 @@ export default function TransactionLogsPage() {
                       minute: '2-digit'
                     })}
                   </td>
-                  <td className="td">
-                    {tx.itemId?.name || '-'}
-                    {tx.observations && (
-                      <span style={{ marginLeft: 6, fontSize: 11, color: '#6b7280', fontStyle: 'italic' }}>
-                        (has notes)
-                      </span>
-                    )}
+                  <td className="td" style={{ maxWidth: 300 }}>
+                    <div style={{ wordBreak: 'break-word' }}>
+                      {tx.itemId?.name || '-'}
+                      {tx.observations && (
+                        <span style={{ marginLeft: 6, fontSize: 11, color: '#6b7280', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                          (has notes)
+                        </span>
+                      )}
+                    </div>
                   </td>
-                  <td className="td" style={{ color: '#6b7280' }}>{tx.itemId?.type || '-'}</td>
+                  <td className="td" style={{ color: '#6b7280', fontSize: 13 }}>{tx.itemId?.type || '-'}</td>
                 <td className="td">
                   {editId === tx._id ? (
                     <select
