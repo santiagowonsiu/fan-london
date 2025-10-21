@@ -8,7 +8,7 @@ import { ActivityLog } from '@/lib/models/ActivityLog';
 export async function POST(request) {
   await dbConnect();
   const body = await request.json();
-  const { itemId, direction, quantity } = body;
+  const { itemId, direction, quantity, observations, personName } = body;
 
   if (!itemId || !mongoose.isValidObjectId(itemId)) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 });
@@ -27,7 +27,13 @@ export async function POST(request) {
   }
 
   try {
-    const tx = await Transaction.create({ itemId, direction, quantity: qty });
+    const tx = await Transaction.create({ 
+      itemId, 
+      direction, 
+      quantity: qty,
+      observations: observations || undefined,
+      personName: personName || undefined
+    });
 
     // Log the activity
     await ActivityLog.create({
@@ -37,7 +43,9 @@ export async function POST(request) {
       entityName: item.name,
       details: {
         direction,
-        quantity: qty
+        quantity: qty,
+        observations: observations || undefined,
+        personName: personName || undefined
       }
     });
 

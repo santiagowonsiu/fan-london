@@ -39,6 +39,7 @@ export default function TransactionLogsPage() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editId, setEditId] = useState(null);
   const [editDraft, setEditDraft] = useState({ direction: '', quantity: '' });
+  const [expandedId, setExpandedId] = useState(null);
 
   useEffect(() => {
     loadTransactions();
@@ -187,7 +188,11 @@ export default function TransactionLogsPage() {
     itemSearch && item.name.toLowerCase().includes(itemSearch.toLowerCase())
   ).slice(0, 10);
 
-  const cols = isEditMode ? 6 : 5;
+  const cols = isEditMode ? 7 : 6;
+
+  function toggleExpanded(id) {
+    setExpandedId(expandedId === id ? null : id);
+  }
 
   return (
     <div>
@@ -390,6 +395,7 @@ export default function TransactionLogsPage() {
               <th className="th">Type</th>
               <th className="th">Direction</th>
               <th className="th" style={{ textAlign: 'right' }}>Quantity</th>
+              <th className="th">Person</th>
               {isEditMode && <th className="th">Actions</th>}
             </tr>
           </thead>
@@ -399,18 +405,26 @@ export default function TransactionLogsPage() {
             ) : filteredRows.length === 0 ? (
               <tr><td className="td" colSpan={cols}>No transactions found</td></tr>
             ) : filteredRows.map((tx) => (
-              <tr key={tx._id}>
-                <td className="td" style={{ whiteSpace: 'nowrap' }}>
-                  {new Date(tx.createdAt).toLocaleString('en-GB', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </td>
-                <td className="td">{tx.itemId?.name || '-'}</td>
-                <td className="td" style={{ color: '#6b7280' }}>{tx.itemId?.type || '-'}</td>
+              <>
+                <tr key={tx._id} style={{ cursor: tx.observations ? 'pointer' : 'default' }} onClick={() => tx.observations && toggleExpanded(tx._id)}>
+                  <td className="td" style={{ whiteSpace: 'nowrap' }}>
+                    {new Date(tx.createdAt).toLocaleString('en-GB', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </td>
+                  <td className="td">
+                    {tx.itemId?.name || '-'}
+                    {tx.observations && (
+                      <span style={{ marginLeft: 6, fontSize: 11, color: '#6b7280', fontStyle: 'italic' }}>
+                        (has notes)
+                      </span>
+                    )}
+                  </td>
+                  <td className="td" style={{ color: '#6b7280' }}>{tx.itemId?.type || '-'}</td>
                 <td className="td">
                   {editId === tx._id ? (
                     <select
@@ -456,8 +470,11 @@ export default function TransactionLogsPage() {
                     </span>
                   )}
                 </td>
+                <td className="td">
+                  {tx.personName || <span style={{ color: '#9ca3af' }}>-</span>}
+                </td>
                 {isEditMode && (
-                  <td className="td" style={{ display: 'flex', gap: 8 }}>
+                  <td className="td" style={{ display: 'flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
                     {editId === tx._id ? (
                       <>
                         <button 
@@ -497,6 +514,19 @@ export default function TransactionLogsPage() {
                   </td>
                 )}
               </tr>
+              {expandedId === tx._id && tx.observations && (
+                <tr>
+                  <td className="td" colSpan={cols} style={{ background: '#f9fafb', padding: 16 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: '#374151' }}>
+                      Observations:
+                    </div>
+                    <div style={{ fontSize: 14, color: '#4b5563', fontStyle: 'italic' }}>
+                      "{tx.observations}"
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </>
             ))}
           </tbody>
         </table>
