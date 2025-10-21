@@ -522,12 +522,12 @@ export default function InternalOrdersPage() {
                   <table className="table" style={{ fontSize: 13 }}>
                     <thead>
                       <tr>
-                        <th className="th">Item</th>
-                        <th className="th">Type</th>
-                        <th className="th" style={{ textAlign: 'right' }}>Quantity</th>
-                        <th className="th">Stock Status</th>
-                        <th className="th">Item Status</th>
-                        <th className="th">Actions</th>
+                        <th className="th" style={{ minWidth: 200 }}>Item</th>
+                        <th className="th" style={{ minWidth: 120 }}>Type</th>
+                        <th className="th" style={{ textAlign: 'right', minWidth: 100 }}>Quantity</th>
+                        <th className="th" style={{ minWidth: 110 }}>Stock Status</th>
+                        <th className="th" style={{ minWidth: 100 }}>Item Status</th>
+                        <th className="th" style={{ minWidth: 120 }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -572,35 +572,77 @@ export default function InternalOrdersPage() {
                             </span>
                           </td>
                           <td className="td">
-                            <div style={{ display: 'flex', gap: 6 }}>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap' }}>
                               {item.status !== 'purchased' && (
                                 <button
                                   type="button"
-                                  className="button"
                                   onClick={() => updateItemStatus(order._id, idx, 'purchased')}
-                                  style={{ background: '#059669', color: 'white', fontSize: 12, padding: '4px 10px' }}
+                                  style={{ 
+                                    border: '1px solid #059669',
+                                    background: 'white',
+                                    color: '#059669',
+                                    fontSize: 18,
+                                    padding: '6px',
+                                    cursor: 'pointer',
+                                    borderRadius: 6,
+                                    lineHeight: 1,
+                                    width: 32,
+                                    height: 32,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}
+                                  title="Mark as purchased"
                                 >
-                                  ✓ Purchased
+                                  ✓
                                 </button>
                               )}
                               {item.status !== 'rejected' && (
                                 <button
                                   type="button"
-                                  className="button"
                                   onClick={() => updateItemStatus(order._id, idx, 'rejected')}
-                                  style={{ background: '#dc2626', color: 'white', fontSize: 12, padding: '4px 10px' }}
+                                  style={{ 
+                                    border: '1px solid #dc2626',
+                                    background: 'white',
+                                    color: '#dc2626',
+                                    fontSize: 18,
+                                    padding: '6px',
+                                    cursor: 'pointer',
+                                    borderRadius: 6,
+                                    lineHeight: 1,
+                                    width: 32,
+                                    height: 32,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}
+                                  title="Reject item"
                                 >
-                                  ✗ Reject
+                                  ✗
                                 </button>
                               )}
                               {item.status !== 'pending' && (
                                 <button
                                   type="button"
-                                  className="button"
                                   onClick={() => updateItemStatus(order._id, idx, 'pending')}
-                                  style={{ fontSize: 12, padding: '4px 10px' }}
+                                  style={{ 
+                                    border: '1px solid #f59e0b',
+                                    background: 'white',
+                                    color: '#f59e0b',
+                                    fontSize: 18,
+                                    padding: '6px',
+                                    cursor: 'pointer',
+                                    borderRadius: 6,
+                                    lineHeight: 1,
+                                    width: 32,
+                                    height: 32,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                  }}
+                                  title="Mark as pending"
                                 >
-                                  ↺ Pending
+                                  ↺
                                 </button>
                               )}
                             </div>
