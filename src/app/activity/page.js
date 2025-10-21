@@ -9,7 +9,6 @@ const ACTION_LABELS = {
   product_added: 'Product Added',
   product_edited: 'Product Edited',
   product_deleted: 'Product Deleted',
-  transaction_added: 'Transaction Added',
   transaction_edited: 'Transaction Edited',
   transaction_deleted: 'Transaction Deleted'
 };
@@ -18,7 +17,6 @@ const ACTION_COLORS = {
   product_added: { bg: '#d1fae5', color: '#065f46' },
   product_edited: { bg: '#dbeafe', color: '#1e40af' },
   product_deleted: { bg: '#fee2e2', color: '#991b1b' },
-  transaction_added: { bg: '#d1fae5', color: '#065f46' },
   transaction_edited: { bg: '#dbeafe', color: '#1e40af' },
   transaction_deleted: { bg: '#fee2e2', color: '#991b1b' }
 };
@@ -239,7 +237,6 @@ export default function ActivityLogPage() {
           <option value="product_added">Product Added</option>
           <option value="product_edited">Product Edited</option>
           <option value="product_deleted">Product Deleted</option>
-          <option value="transaction_added">Transaction Added</option>
           <option value="transaction_edited">Transaction Edited</option>
           <option value="transaction_deleted">Transaction Deleted</option>
         </select>

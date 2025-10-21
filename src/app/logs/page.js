@@ -192,15 +192,31 @@ export default function TransactionLogsPage() {
     itemSearch && item.name.toLowerCase().includes(itemSearch.toLowerCase())
   ).slice(0, 10);
 
-  const cols = isEditMode ? 8 : 7;
+  const cols = isEditMode ? 9 : 8;
 
   function toggleExpanded(id) {
     setExpandedId(expandedId === id ? null : id);
   }
 
+  // Calculate running stock for each transaction
+  const rowsWithStock = filteredRows.map((tx, index) => {
+    // Calculate cumulative stock up to this transaction (chronologically)
+    const stockUpToHere = filteredRows
+      .slice(0, index + 1) // Include current transaction
+      .reduce((acc, t) => {
+        const baseQty = t.quantityBase || t.quantity || 0;
+        return acc + (t.direction === 'in' ? baseQty : -baseQty);
+      }, 0);
+
+    return {
+      ...tx,
+      stockAtTime: stockUpToHere
+    };
+  });
+
   // Paginate filtered results
-  const totalPages = Math.ceil(filteredRows.length / itemsPerPage);
-  const paginatedRows = filteredRows.slice(
+  const totalPages = Math.ceil(rowsWithStock.length / itemsPerPage);
+  const paginatedRows = rowsWithStock.slice(
     (page - 1) * itemsPerPage,
     page * itemsPerPage
   );
@@ -412,6 +428,7 @@ export default function TransactionLogsPage() {
               <th className="th">Direction</th>
               <th className="th" style={{ textAlign: 'right' }} title="Quantity in base content units">Base Qty</th>
               <th className="th" style={{ textAlign: 'right' }} title="Quantity in purchase pack units">Pack Qty</th>
+              <th className="th" style={{ textAlign: 'right' }} title="Cumulative stock at this point in time">Stock at Time</th>
               <th className="th">Person</th>
               {isEditMode && <th className="th">Actions</th>}
             </tr>
@@ -487,6 +504,18 @@ export default function TransactionLogsPage() {
                   </span>
                   <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 400 }}>
                     {tx.itemId?.purchasePackUnit || 'unit'}
+                  </div>
+                </td>
+                <td className="td" style={{ textAlign: 'right' }}>
+                  <span style={{ 
+                    fontWeight: 700,
+                    fontSize: 15,
+                    color: tx.stockAtTime >= 0 ? '#059669' : '#dc2626'
+                  }}>
+                    {tx.stockAtTime.toFixed(2)}
+                  </span>
+                  <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 400 }}>
+                    {tx.itemId?.baseContentUnit || 'unit'}
                   </div>
                 </td>
                 <td className="td">

@@ -38,23 +38,8 @@ export async function POST(request) {
       personName: personName || undefined
     });
 
-    // Log the activity
-    await ActivityLog.create({
-      action: 'transaction_added',
-      entityType: 'transaction',
-      entityId: tx._id,
-      entityName: item.name,
-      details: {
-        direction,
-        quantity: qty,
-        quantityBase,
-        quantityPack,
-        unitUsed,
-        observations: observations || undefined,
-        personName: personName || undefined
-      }
-    });
-
+    // Don't log transaction_added to Activity Log (too much noise)
+    
     return NextResponse.json(tx, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
