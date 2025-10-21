@@ -149,3 +149,74 @@ export async function fetchActivityLogs(params = {}) {
   return res.json();
 }
 
+// Internal Orders API
+export async function fetchInternalOrders(params = {}) {
+  const query = new URLSearchParams();
+  if (params.status) query.set('status', params.status);
+  const res = await fetch(`${API_BASE}/internal-orders?${query.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch internal orders');
+  return res.json();
+}
+
+export async function createInternalOrder(data) {
+  const res = await fetch(`${API_BASE}/internal-orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create internal order');
+  }
+  return res.json();
+}
+
+export async function updateInternalOrder(id, data) {
+  const res = await fetch(`${API_BASE}/internal-orders/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update internal order');
+  }
+  return res.json();
+}
+
+// External Orders API
+export async function fetchExternalOrders(params = {}) {
+  const query = new URLSearchParams();
+  if (params.status) query.set('status', params.status);
+  if (params.supplier) query.set('supplier', params.supplier);
+  const res = await fetch(`${API_BASE}/external-orders?${query.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch external orders');
+  return res.json();
+}
+
+export async function createExternalOrder(data) {
+  const res = await fetch(`${API_BASE}/external-orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create external order');
+  }
+  return res.json();
+}
+
+export async function updateExternalOrder(id, data) {
+  const res = await fetch(`${API_BASE}/external-orders/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update external order');
+  }
+  return res.json();
+}
+

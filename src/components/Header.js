@@ -32,6 +32,12 @@ export default function Header() {
           <Link href="/stock" className={isActive('/stock') ? 'active' : undefined}>
             Current Stock
           </Link>
+          <Link href="/internal-orders" className={isActive('/internal-orders') ? 'active' : undefined}>
+            Internal Orders
+          </Link>
+          <Link href="/external-orders" className={isActive('/external-orders') ? 'active' : undefined}>
+            External Orders
+          </Link>
           <Link href="/activity" className={isActive('/activity') ? 'active' : undefined}>
             Activity Log
           </Link>
