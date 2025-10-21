@@ -8,7 +8,7 @@ import { ActivityLog } from '@/lib/models/ActivityLog';
 export async function POST(request) {
   await dbConnect();
   const body = await request.json();
-  const { itemId, direction, quantity, observations, personName } = body;
+  const { itemId, direction, quantity, quantityBase, quantityPack, unitUsed, observations, personName } = body;
 
   if (!itemId || !mongoose.isValidObjectId(itemId)) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 });
@@ -31,6 +31,9 @@ export async function POST(request) {
       itemId, 
       direction, 
       quantity: qty,
+      quantityBase: quantityBase || qty,
+      quantityPack: quantityPack || qty,
+      unitUsed: unitUsed || 'pack',
       observations: observations || undefined,
       personName: personName || undefined
     });
@@ -44,6 +47,9 @@ export async function POST(request) {
       details: {
         direction,
         quantity: qty,
+        quantityBase,
+        quantityPack,
+        unitUsed,
         observations: observations || undefined,
         personName: personName || undefined
       }

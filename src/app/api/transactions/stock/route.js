@@ -9,12 +9,21 @@ export async function GET() {
     {
       $group: {
         _id: '$itemId',
-        stock: {
+        stockBase: {
           $sum: {
             $cond: [
               { $eq: ['$direction', 'in'] },
-              '$quantity',
-              { $multiply: ['$quantity', -1] },
+              { $ifNull: ['$quantityBase', '$quantity'] },
+              { $multiply: [{ $ifNull: ['$quantityBase', '$quantity'] }, -1] },
+            ],
+          },
+        },
+        stockPack: {
+          $sum: {
+            $cond: [
+              { $eq: ['$direction', 'in'] },
+              { $ifNull: ['$quantityPack', '$quantity'] },
+              { $multiply: [{ $ifNull: ['$quantityPack', '$quantity'] }, -1] },
             ],
           },
         },
@@ -35,7 +44,10 @@ export async function GET() {
         itemId: '$item._id',
         name: '$item.name',
         type: '$item.type',
-        stock: 1,
+        baseContentUnit: '$item.baseContentUnit',
+        purchasePackUnit: '$item.purchasePackUnit',
+        stockBase: 1,
+        stockPack: 1,
       },
     },
     { $sort: { name: 1 } },

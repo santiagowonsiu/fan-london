@@ -35,7 +35,7 @@ export default function TransactionsPage() {
   const [suggestions, setSuggestions] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [quantity, setQuantity] = useState('');
-  const [usePack, setUsePack] = useState(false);
+  const [usePack, setUsePack] = useState(true); // Default to purchase pack
   const [observations, setObservations] = useState('');
   const [personName, setPersonName] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -78,13 +78,31 @@ export default function TransactionsPage() {
     const qtyNum = Number(quantity);
     if (!Number.isFinite(qtyNum) || qtyNum <= 0) return alert('Enter a valid quantity');
     
+    // Calculate both base and pack quantities
+    let quantityBase, quantityPack;
+    const baseContentValue = selectedItem.baseContentValue || 1;
+    const purchasePackQuantity = selectedItem.purchasePackQuantity || 1;
+    
+    if (usePack) {
+      // User entered in pack units
+      quantityPack = qtyNum;
+      quantityBase = qtyNum * purchasePackQuantity * baseContentValue;
+    } else {
+      // User entered in base units
+      quantityBase = qtyNum;
+      quantityPack = qtyNum / (purchasePackQuantity * baseContentValue);
+    }
+    
     setSubmitting(true);
     try {
       await postTransaction({ 
         itemId: selectedItem._id, 
         direction, 
-        quantity: qtyNum,
-        observations: observations.trim(),
+        quantity: usePack ? quantityPack : quantityBase, // For backward compatibility
+        quantityBase,
+        quantityPack,
+        unitUsed: usePack ? 'pack' : 'base',
+        observations: observations.trim() || undefined,
         personName: personName.trim()
       });
       
@@ -95,7 +113,7 @@ export default function TransactionsPage() {
       setQuantity('');
       setObservations('');
       setPersonName('');
-      setUsePack(false);
+      setUsePack(true); // Reset to default
       
       alert('Transaction saved successfully');
     } catch (e2) {
@@ -265,11 +283,13 @@ export default function TransactionsPage() {
                   border: 'none', 
                   background: !usePack ? '#111' : 'white', 
                   color: !usePack ? 'white' : '#111',
-                  padding: '10px 20px'
+                  padding: '10px 20px',
+                  fontSize: 15,
+                  fontWeight: 600
                 }} 
                 onClick={() => setUsePack(false)}
               >
-                Base Content ({selectedItem.baseContentUnit || 'unit'})
+                {selectedItem.baseContentUnit || 'unit'}
               </button>
               <button 
                 type="button" 
@@ -279,11 +299,13 @@ export default function TransactionsPage() {
                   border: 'none', 
                   background: usePack ? '#111' : 'white', 
                   color: usePack ? 'white' : '#111',
-                  padding: '10px 20px'
+                  padding: '10px 20px',
+                  fontSize: 15,
+                  fontWeight: 600
                 }} 
                 onClick={() => setUsePack(true)}
               >
-                Purchase Pack ({selectedItem.purchasePackUnit || 'unit'})
+                {selectedItem.purchasePackUnit || 'unit'}
               </button>
             </div>
           </div>

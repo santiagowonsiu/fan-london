@@ -188,7 +188,7 @@ export default function TransactionLogsPage() {
     itemSearch && item.name.toLowerCase().includes(itemSearch.toLowerCase())
   ).slice(0, 10);
 
-  const cols = isEditMode ? 7 : 6;
+  const cols = isEditMode ? 8 : 7;
 
   function toggleExpanded(id) {
     setExpandedId(expandedId === id ? null : id);
@@ -394,7 +394,8 @@ export default function TransactionLogsPage() {
               <th className="th">Item</th>
               <th className="th">Type</th>
               <th className="th">Direction</th>
-              <th className="th" style={{ textAlign: 'right' }}>Quantity</th>
+              <th className="th" style={{ textAlign: 'right' }} title="Quantity in base content units">Base Qty</th>
+              <th className="th" style={{ textAlign: 'right' }} title="Quantity in purchase pack units">Pack Qty</th>
               <th className="th">Person</th>
               {isEditMode && <th className="th">Actions</th>}
             </tr>
@@ -451,24 +452,26 @@ export default function TransactionLogsPage() {
                   )}
                 </td>
                 <td className="td" style={{ textAlign: 'right' }}>
-                  {editId === tx._id ? (
-                    <input
-                      className="input"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editDraft.quantity}
-                      onChange={(e) => setEditDraft(prev => ({ ...prev, quantity: e.target.value }))}
-                      style={{ width: 100, textAlign: 'right' }}
-                    />
-                  ) : (
-                    <span style={{ 
-                      fontWeight: 600,
-                      color: tx.direction === 'in' ? '#059669' : '#dc2626'
-                    }}>
-                      {tx.direction === 'in' ? '+' : '-'}{tx.quantity}
-                    </span>
-                  )}
+                  <span style={{ 
+                    fontWeight: 600,
+                    color: tx.direction === 'in' ? '#059669' : '#dc2626'
+                  }}>
+                    {tx.direction === 'in' ? '+' : '-'}{(tx.quantityBase || tx.quantity || 0).toFixed(2)}
+                  </span>
+                  <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 400 }}>
+                    {tx.itemId?.baseContentUnit || 'unit'}
+                  </div>
+                </td>
+                <td className="td" style={{ textAlign: 'right' }}>
+                  <span style={{ 
+                    fontWeight: 600,
+                    color: tx.direction === 'in' ? '#059669' : '#dc2626'
+                  }}>
+                    {tx.direction === 'in' ? '+' : '-'}{(tx.quantityPack || tx.quantity || 0).toFixed(2)}
+                  </span>
+                  <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 400 }}>
+                    {tx.itemId?.purchasePackUnit || 'unit'}
+                  </div>
                 </td>
                 <td className="td">
                   {tx.personName || <span style={{ color: '#9ca3af' }}>-</span>}

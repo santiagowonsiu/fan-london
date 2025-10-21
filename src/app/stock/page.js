@@ -43,19 +43,41 @@ export default function CurrentStockPage() {
             <tr>
               <th className="th">Item</th>
               <th className="th">Type</th>
-              <th className="th">Stock</th>
+              <th className="th" style={{ textAlign: 'right' }} title="Stock in base content units">Base Stock</th>
+              <th className="th" style={{ textAlign: 'right' }} title="Stock in purchase pack units">Pack Stock</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td className="td" colSpan={3}>Loading...</td></tr>
+              <tr><td className="td" colSpan={4}>Loading...</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td className="td" colSpan={3}>No data</td></tr>
+              <tr><td className="td" colSpan={4}>No data</td></tr>
             ) : rows.map((r) => (
               <tr key={r.itemId}>
                 <td className="td">{r.name}</td>
-                <td className="td">{r.type}</td>
-                <td className="td">{r.stock}</td>
+                <td className="td" style={{ color: '#6b7280' }}>{r.type}</td>
+                <td className="td" style={{ textAlign: 'right' }}>
+                  <span style={{ 
+                    fontWeight: 600,
+                    color: (r.stockBase || 0) < 0 ? '#dc2626' : '#059669'
+                  }}>
+                    {(r.stockBase || 0).toFixed(2)}
+                  </span>
+                  <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 400 }}>
+                    {r.baseContentUnit || 'unit'}
+                  </div>
+                </td>
+                <td className="td" style={{ textAlign: 'right' }}>
+                  <span style={{ 
+                    fontWeight: 600,
+                    color: (r.stockPack || 0) < 0 ? '#dc2626' : '#059669'
+                  }}>
+                    {(r.stockPack || 0).toFixed(2)}
+                  </span>
+                  <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 400 }}>
+                    {r.purchasePackUnit || 'unit'}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
