@@ -159,12 +159,43 @@ export default function InternalOrdersPage() {
       const order = orders.find(o => o._id === orderId);
       if (!order) return;
 
-      const updatedItems = [...order.items];
-      updatedItems[itemIndex] = { ...updatedItems[itemIndex], status: newStatus };
+      // Preserve all item fields and only update status
+      const updatedItems = order.items.map((item, idx) => {
+        if (idx === itemIndex) {
+          return {
+            itemId: item.itemId?._id || item.itemId,
+            quantity: item.quantity,
+            quantityBase: item.quantityBase,
+            quantityPack: item.quantityPack,
+            unitUsed: item.unitUsed,
+            hasStock: item.hasStock,
+            needsToBuy: item.needsToBuy,
+            status: newStatus,
+            statusChangedAt: item.statusChangedAt,
+            previousStatus: item.previousStatus,
+            _id: item._id
+          };
+        }
+        return {
+          itemId: item.itemId?._id || item.itemId,
+          quantity: item.quantity,
+          quantityBase: item.quantityBase,
+          quantityPack: item.quantityPack,
+          unitUsed: item.unitUsed,
+          hasStock: item.hasStock,
+          needsToBuy: item.needsToBuy,
+          status: item.status || 'pending',
+          statusChangedAt: item.statusChangedAt,
+          previousStatus: item.previousStatus,
+          _id: item._id
+        };
+      });
 
+      console.log('Updating order:', orderId, 'Item:', itemIndex, 'New status:', newStatus);
       await updateInternalOrder(orderId, { items: updatedItems });
-      loadOrders();
+      await loadOrders();
     } catch (e) {
+      console.error('Update error:', e);
       alert(e.message);
     }
   }
@@ -449,6 +480,7 @@ export default function InternalOrdersPage() {
               const pendingCount = order.items.filter(i => (i.status || 'pending') === 'pending').length;
               const purchasedCount = order.items.filter(i => i.status === 'purchased').length;
               const rejectedCount = order.items.filter(i => i.status === 'rejected').length;
+              const isCompleted = (order.overallStatus || 'pending') !== 'pending';
 
               return (
                 <div
@@ -456,9 +488,10 @@ export default function InternalOrdersPage() {
                   style={{
                     marginBottom: 16,
                     padding: 16,
-                    background: 'white',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8
+                    background: isCompleted ? '#f9fafb' : 'white',
+                    border: `1px solid ${isCompleted ? '#d1d5db' : '#e5e7eb'}`,
+                    borderRadius: 8,
+                    opacity: isCompleted ? 0.75 : 1
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
