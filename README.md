@@ -1,33 +1,61 @@
-# Fan London Inventory App
+# FAN London Inventory Manager
 
-This monorepo contains a Node/Express backend and a React (Vite) frontend.
+A Next.js-based inventory management system with MongoDB backend.
 
-## Getting Started
+## Features
 
-### Prerequisites
-- Node.js 18+
-- npm 9+
+- Product catalog with types, base content, and purchase pack tracking
+- Transaction logging (input/output)
+- Current stock calculation
+- Archive functionality
+- Responsive design (iPad-optimized)
 
-### Backend
-```bash
-cd backend
-cp .env .env.local || true
-# Ensure MONGODB_URI and PORT are set in .env
-npm run dev
-# Health check: http://localhost:4000/health
+## Tech Stack
+
+- **Frontend & Backend**: Next.js 15 (App Router)
+- **Database**: MongoDB (MongoDB Atlas)
+- **Styling**: Custom CSS
+- **Deployment**: Vercel
+
+## Environment Variables
+
+Create a `.env.local` file in the root directory:
+
+```
+MONGODB_URI=your_mongodb_connection_string
 ```
 
-### Frontend
+## Development
+
 ```bash
-cd frontend
+npm install
 npm run dev
-# App runs on http://localhost:5173
 ```
 
-### Environment Variables
-- Backend: `.env` with `MONGODB_URI`, `PORT`
-- Frontend: `.env` with `VITE_API_BASE_URL`
+Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-## Notes
-- Backend uses Mongoose, CORS, and Morgan.
-- Frontend proxies API to the backend in development.
+## Deployment
+
+The project is configured for easy Vercel deployment:
+
+```bash
+vercel
+```
+
+Make sure to set the `MONGODB_URI` environment variable in your Vercel project settings.
+
+## Project Structure
+
+```
+/src
+  /app             # Next.js pages and API routes
+  /components      # React components
+  /lib             # Utilities (API helpers, DB connection, models)
+  /assets          # Static assets (logos, icons)
+/data              # CSV seed data
+/public            # Public static files
+```
+
+## License
+
+Private project for FAN London.

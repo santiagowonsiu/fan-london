@@ -2,7 +2,10 @@
 node_modules/
 **/node_modules/
 **/.env
+**/.env.local
 .DS_Store
 .vscode/
 .cursor/
 .vercel
+.next/
+out/
