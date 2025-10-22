@@ -5,7 +5,7 @@ import { ExternalOrder } from '@/lib/models/ExternalOrder';
 export async function POST(request) {
   await dbConnect();
   const body = await request.json();
-  const { supplier, orderDate, items, notes } = body;
+  const { supplier, supplierId, orderDate, items, notes } = body;
 
   if (!supplier || !supplier.trim()) {
     return NextResponse.json({ error: 'Supplier is required' }, { status: 400 });
@@ -20,6 +20,7 @@ export async function POST(request) {
   try {
     const order = await ExternalOrder.create({
       supplier: supplier.trim(),
+      supplierId: supplierId || undefined,
       orderDate: orderDate || new Date(),
       items,
       totalAmount,
@@ -37,14 +38,17 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
   const supplier = searchParams.get('supplier');
+  const supplierId = searchParams.get('supplierId');
 
   const filter = {};
   if (status && status !== 'all') filter.status = status;
   if (supplier) filter.supplier = supplier;
+  if (supplierId) filter.supplierId = supplierId;
 
   const orders = await ExternalOrder.find(filter)
     .sort({ createdAt: -1 })
-    .populate('items.itemId', 'name type baseContentUnit purchasePackUnit');
+    .populate('items.itemId', 'name type baseContentUnit purchasePackUnit')
+    .populate('supplierId', 'name');
 
   return NextResponse.json({ orders });
 }

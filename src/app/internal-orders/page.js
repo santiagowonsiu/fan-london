@@ -12,6 +12,15 @@ export default function InternalOrdersPage() {
   const [viewMode, setViewMode] = useState('byOrder');
   const [statusFilter, setStatusFilter] = useState('all');
   
+  // Supplier assignment modal
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  const [selectedItemIndex, setSelectedItemIndex] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [suppliers, setSuppliers] = useState([]);
+  const [selectedSupplierId, setSelectedSupplierId] = useState('');
+  const [assignmentNotes, setAssignmentNotes] = useState('');
+  
   // Add order form
   const [showAddForm, setShowAddForm] = useState(false);
   const [department, setDepartment] = useState('Kitchen');
@@ -25,7 +34,19 @@ export default function InternalOrdersPage() {
   useEffect(() => {
     loadOrders();
     loadStock();
+    loadSuppliers();
   }, [statusFilter]);
+
+  async function loadSuppliers() {
+    try {
+      const response = await fetch('/api/suppliers');
+      const data = await response.json();
+      // Filter to only show order-related suppliers
+      setSuppliers((data.suppliers || []).filter(s => s.supplierType === 'order'));
+    } catch (e) {
+      console.error('Failed to load suppliers:', e);
+    }
+  }
 
   async function loadOrders() {
     setLoading(true);
@@ -151,6 +172,109 @@ export default function InternalOrdersPage() {
       alert('Internal order created');
     } catch (e) {
       alert(e.message);
+    }
+  }
+
+  function assignItemToSupplier(orderId, itemIndex, item) {
+    setSelectedOrderId(orderId);
+    setSelectedItemIndex(itemIndex);
+    setSelectedItem(item);
+    setShowSupplierModal(true);
+  }
+
+  async function confirmSupplierAssignment() {
+    if (!selectedSupplierId) {
+      alert('Please select a supplier');
+      return;
+    }
+
+    try {
+      const supplier = suppliers.find(s => s._id === selectedSupplierId);
+      if (!supplier) {
+        alert('Supplier not found');
+        return;
+      }
+
+      // Check if there's an existing pending external order for this supplier
+      const externalOrdersResponse = await fetch(`/api/external-orders?supplierId=${selectedSupplierId}&status=pending`);
+      const externalOrdersData = await externalOrdersResponse.json();
+      const existingOrder = externalOrdersData.orders?.[0];
+
+      let externalOrderId;
+
+      if (existingOrder) {
+        // Add item to existing order
+        const updatedItems = [
+          ...existingOrder.items,
+          {
+            itemId: selectedItem.itemId?._id || selectedItem.itemId,
+            quantity: selectedItem.quantityPack || selectedItem.quantity,
+            quantityBase: selectedItem.quantityBase,
+            quantityPack: selectedItem.quantityPack,
+            unitUsed: selectedItem.unitUsed || 'pack',
+            internalOrderId: selectedOrderId,
+            internalOrderItemId: selectedItem._id
+          }
+        ];
+
+        await fetch(`/api/external-orders/${existingOrder._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: updatedItems })
+        });
+
+        externalOrderId = existingOrder._id;
+      } else {
+        // Create new external order
+        const newExternalOrderResponse = await fetch('/api/external-orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            supplierId: selectedSupplierId,
+            supplier: supplier.name,
+            items: [{
+              itemId: selectedItem.itemId?._id || selectedItem.itemId,
+              quantity: selectedItem.quantityPack || selectedItem.quantity,
+              quantityBase: selectedItem.quantityBase,
+              quantityPack: selectedItem.quantityPack,
+              unitUsed: selectedItem.unitUsed || 'pack',
+              internalOrderId: selectedOrderId,
+              internalOrderItemId: selectedItem._id
+            }],
+            notes: assignmentNotes.trim() || undefined
+          })
+        });
+
+        const newExternalOrder = await newExternalOrderResponse.json();
+        externalOrderId = newExternalOrder._id;
+      }
+
+      // Update internal order item status to 'assigned'
+      const order = orders.find(o => o._id === selectedOrderId);
+      const updatedItems = order.items.map((item, idx) => ({
+        ...item,
+        itemId: item.itemId?._id || item.itemId,
+        status: idx === selectedItemIndex ? 'assigned' : item.status,
+        supplierId: idx === selectedItemIndex ? selectedSupplierId : item.supplierId,
+        externalOrderId: idx === selectedItemIndex ? externalOrderId : item.externalOrderId,
+        assignmentNotes: idx === selectedItemIndex ? (assignmentNotes.trim() || undefined) : item.assignmentNotes
+      }));
+
+      await updateInternalOrder(selectedOrderId, { items: updatedItems });
+
+      // Reset modal
+      setShowSupplierModal(false);
+      setSelectedOrderId(null);
+      setSelectedItemIndex(null);
+      setSelectedItem(null);
+      setSelectedSupplierId('');
+      setAssignmentNotes('');
+
+      // Reload orders
+      loadOrders();
+      alert(`Item assigned to ${supplier.name}${existingOrder ? ' (added to existing order)' : ' (new order created)'}`);
+    } catch (e) {
+      alert('Error assigning item: ' + e.message);
     }
   }
 
@@ -602,7 +726,8 @@ export default function InternalOrdersPage() {
           ) : (
             orders.map(order => {
               const pendingCount = order.items.filter(i => (i.status || 'pending') === 'pending').length;
-              const purchasedCount = order.items.filter(i => i.status === 'purchased').length;
+              const assignedCount = order.items.filter(i => i.status === 'assigned').length;
+              const orderedCount = order.items.filter(i => i.status === 'ordered').length;
               const rejectedCount = order.items.filter(i => i.status === 'rejected').length;
               const isCompleted = (order.overallStatus || 'pending') !== 'pending';
 
@@ -698,8 +823,10 @@ export default function InternalOrdersPage() {
                         {(order.overallStatus || 'pending').toUpperCase()}
                       </span>
                       <div style={{ fontSize: 12, color: '#6b7280', marginTop: 6 }}>
-                        {purchasedCount > 0 && `${purchasedCount} purchased`}
-                        {purchasedCount > 0 && rejectedCount > 0 && ', '}
+                        {orderedCount > 0 && `${orderedCount} ordered`}
+                        {orderedCount > 0 && assignedCount > 0 && ', '}
+                        {assignedCount > 0 && `${assignedCount} assigned`}
+                        {(orderedCount > 0 || assignedCount > 0) && rejectedCount > 0 && ', '}
                         {rejectedCount > 0 && `${rejectedCount} rejected`}
                         {pendingCount > 0 && `, ${pendingCount} pending`}
                       </div>
@@ -749,10 +876,12 @@ export default function InternalOrdersPage() {
                               fontSize: 12,
                               fontWeight: 600,
                               background: 
-                                item.status === 'purchased' ? '#d1fae5' : 
+                                item.status === 'ordered' ? '#d1fae5' : 
+                                item.status === 'assigned' ? '#f3e8ff' :
                                 item.status === 'rejected' ? '#fee2e2' : '#fef3c7',
                               color: 
-                                item.status === 'purchased' ? '#065f46' : 
+                                item.status === 'ordered' ? '#065f46' :
+                                item.status === 'assigned' ? '#7c3aed' :
                                 item.status === 'rejected' ? '#991b1b' : '#92400e'
                             }}>
                               {(item.status || 'pending').toUpperCase()}
@@ -760,20 +889,21 @@ export default function InternalOrdersPage() {
                           </td>
                           <td className="td">
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap' }}>
+                              {/* Assign to Order */}
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.preventDefault();
-                                  updateItemStatus(order._id, idx, 'purchased');
+                                  assignItemToSupplier(order._id, idx, item);
                                 }}
-                                disabled={item.status === 'purchased'}
+                                disabled={item.status === 'assigned' || item.status === 'ordered'}
                                 style={{ 
-                                  border: '1px solid #059669',
-                                  background: item.status === 'purchased' ? '#d1fae5' : 'white',
-                                  color: '#059669',
-                                  fontSize: 18,
+                                  border: '1px solid #7c3aed',
+                                  background: item.status === 'assigned' || item.status === 'ordered' ? '#f3e8ff' : 'white',
+                                  color: '#7c3aed',
+                                  fontSize: 16,
                                   padding: '6px',
-                                  cursor: item.status === 'purchased' ? 'default' : 'pointer',
+                                  cursor: (item.status === 'assigned' || item.status === 'ordered') ? 'default' : 'pointer',
                                   borderRadius: 6,
                                   lineHeight: 1,
                                   width: 32,
@@ -781,12 +911,43 @@ export default function InternalOrdersPage() {
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
-                                  opacity: item.status === 'purchased' ? 0.5 : 1
+                                  opacity: (item.status === 'assigned' || item.status === 'ordered') ? 0.5 : 1
                                 }}
-                                title="Mark as purchased"
+                                title="Assign to supplier order"
                               >
-                                ✓
+                                📋
                               </button>
+                              
+                              {/* Mark as Ordered (submitted) */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  updateItemStatus(order._id, idx, 'ordered');
+                                }}
+                                disabled={item.status !== 'assigned' && item.status !== 'ordered'}
+                                style={{ 
+                                  border: '1px solid #059669',
+                                  background: item.status === 'ordered' ? '#d1fae5' : 'white',
+                                  color: '#059669',
+                                  fontSize: 16,
+                                  padding: '6px',
+                                  cursor: (item.status === 'assigned' || item.status === 'ordered') ? 'pointer' : 'default',
+                                  borderRadius: 6,
+                                  lineHeight: 1,
+                                  width: 32,
+                                  height: 32,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  opacity: (item.status === 'assigned' || item.status === 'ordered') ? 1 : 0.3
+                                }}
+                                title="Mark as ordered/submitted"
+                              >
+                                📤
+                              </button>
+                              
+                              {/* Reject */}
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -814,6 +975,8 @@ export default function InternalOrdersPage() {
                               >
                                 ✗
                               </button>
+                              
+                              {/* Reset to Pending */}
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -837,10 +1000,12 @@ export default function InternalOrdersPage() {
                                   justifyContent: 'center',
                                   opacity: item.status === 'pending' ? 0.5 : 1
                                 }}
-                                title="Mark as pending"
+                                title="Reset to pending"
                               >
                                 ↺
                               </button>
+                              
+                              {/* Delete */}
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1015,6 +1180,105 @@ export default function InternalOrdersPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Supplier Assignment Modal */}
+      {showSupplierModal && (
+        <>
+          <div 
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 999,
+            }}
+            onClick={() => setShowSupplierModal(false)}
+          />
+          
+          <div style={{
+            position: 'fixed',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 'min(500px, 90vw)',
+            background: 'white',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+            zIndex: 1000,
+            borderRadius: 12,
+            padding: 24
+          }}>
+            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
+              Assign to Supplier
+            </h3>
+            
+            <div style={{ marginBottom: 16, padding: 12, background: '#f9fafb', borderRadius: 6 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Item:</div>
+              <div style={{ fontSize: 13, color: '#6b7280' }}>
+                {selectedItem?.itemId?.name || selectedItem?.itemName || 'Unknown'}
+              </div>
+              <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+                Quantity: {selectedItem?.quantityPack || selectedItem?.quantity} {selectedItem?.itemId?.purchasePackUnit || selectedItem?.purchasePackUnit || 'unit'}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                Select Supplier <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <select
+                className="select"
+                value={selectedSupplierId}
+                onChange={(e) => setSelectedSupplierId(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', fontSize: 14 }}
+              >
+                <option value="">-- Select Supplier --</option>
+                {suppliers.map(supplier => (
+                  <option key={supplier._id} value={supplier._id}>
+                    {supplier.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                Notes <span style={{ fontSize: 13, fontWeight: 400, color: '#6b7280' }}>(Optional)</span>
+              </label>
+              <textarea
+                className="input"
+                placeholder="Add any notes for this assignment..."
+                value={assignmentNotes}
+                onChange={(e) => setAssignmentNotes(e.target.value)}
+                rows="3"
+                style={{ width: '100%', padding: '10px 12px', fontSize: 14 }}
+              ></textarea>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="button"
+                onClick={() => setShowSupplierModal(false)}
+                style={{ padding: '10px 20px' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button"
+                onClick={confirmSupplierAssignment}
+                style={{ 
+                  background: '#7c3aed', 
+                  color: 'white', 
+                  padding: '10px 20px',
+                  fontWeight: 600
+                }}
+              >
+                Assign to Supplier
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

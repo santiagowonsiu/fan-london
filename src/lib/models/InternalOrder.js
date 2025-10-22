@@ -10,11 +10,14 @@ const internalOrderItemSchema = new mongoose.Schema({
   needsToBuy: { type: Boolean },
   status: { 
     type: String, 
-    enum: ['pending', 'purchased', 'rejected'], 
+    enum: ['pending', 'assigned', 'ordered', 'rejected'], 
     default: 'pending' 
   },
   statusChangedAt: { type: Date }, // Track when status first changed from pending
   previousStatus: { type: String }, // Track for activity logging
+  supplierId: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' }, // Assigned supplier
+  externalOrderId: { type: mongoose.Schema.Types.ObjectId, ref: 'ExternalOrder' }, // Linked external order
+  assignmentNotes: { type: String } // Notes when assigning to supplier
 });
 
 const internalOrderSchema = new mongoose.Schema(
