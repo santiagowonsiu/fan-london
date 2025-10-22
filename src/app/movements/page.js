@@ -55,6 +55,13 @@ export default function InventoryMovementsPage() {
   // Movement type
   const [movementType, setMovementType] = useState('single'); // 'single' or 'batch'
 
+  // Batch movement state
+  const [batchItems, setBatchItems] = useState([]); // Array of {item, quantity, usePack}
+  const [batchPhotoUrl, setBatchPhotoUrl] = useState('');
+  const [batchPersonName, setBatchPersonName] = useState('');
+  const [batchObservations, setBatchObservations] = useState('');
+  const [batchDirection, setBatchDirection] = useState('out');
+
   useEffect(() => {
     loadTransactions();
     loadItems();
@@ -291,6 +298,91 @@ export default function InventoryMovementsPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // Batch movement functions
+  async function submitBatchMovement(e) {
+    e.preventDefault();
+    if (batchItems.length === 0) return alert('Add at least one item to the batch');
+    if (!batchPhotoUrl) return alert('Photo is mandatory for all movements');
+    if (!batchPersonName.trim()) return alert('Person name is required');
+
+    setSubmitting(true);
+    try {
+      // Generate a unique order ID for this batch
+      const orderId = `BATCH-${Date.now()}`;
+      
+      // Create all transactions with the same orderId and photoUrl
+      const promises = batchItems.map(({ item, quantity, usePack }) => {
+        const qtyNum = Number(quantity);
+        const baseContentValue = item.baseContentValue || 1;
+        
+        let quantityBase, quantityPack;
+        if (usePack) {
+          quantityPack = qtyNum;
+          quantityBase = qtyNum * baseContentValue;
+        } else {
+          quantityBase = qtyNum;
+          quantityPack = qtyNum / baseContentValue;
+        }
+
+        return postTransaction({
+          itemId: item._id,
+          direction: batchDirection,
+          quantity: usePack ? quantityPack : quantityBase,
+          quantityBase,
+          quantityPack,
+          unitUsed: usePack ? 'pack' : 'base',
+          observations: batchObservations.trim() || undefined,
+          personName: batchPersonName.trim(),
+          photoUrl: batchPhotoUrl,
+          orderId: orderId,
+          orderType: 'consolidated'
+        });
+      });
+
+      await Promise.all(promises);
+
+      // Reset and close
+      setBatchItems([]);
+      setBatchPhotoUrl('');
+      setBatchPersonName('');
+      setBatchObservations('');
+      setBatchDirection('out');
+      setShowNewTransaction(false);
+      loadTransactions();
+      alert(`Batch movement saved successfully (${batchItems.length} items)`);
+    } catch (e2) {
+      alert(e2.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function addItemToBatch() {
+    if (!newTx.selectedItem) return alert('Select an item');
+    const qtyNum = Number(newTx.quantity);
+    if (!Number.isFinite(qtyNum) || qtyNum <= 0) return alert('Enter a valid quantity');
+
+    // Add to batch
+    setBatchItems(prev => [...prev, {
+      item: newTx.selectedItem,
+      quantity: newTx.quantity,
+      usePack: newTx.usePack
+    }]);
+
+    // Reset item selection
+    setNewTx(prev => ({
+      ...prev,
+      selectedItem: null,
+      quantity: '',
+      usePack: true
+    }));
+    setTxQuery('');
+  }
+
+  function removeItemFromBatch(index) {
+    setBatchItems(prev => prev.filter((_, i) => i !== index));
   }
 
   const cols = isEditMode ? 10 : 9;
@@ -742,47 +834,48 @@ export default function InventoryMovementsPage() {
                 </button>
               </div>
 
-              <form onSubmit={submitNewTransaction}>
-                {/* Direction */}
-                <div style={{ marginBottom: 24 }}>
-                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
-                    1. Transaction Type <span style={{ color: '#dc2626' }}>*</span>
-                  </label>
-                  <div style={{ display: 'flex', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-                    <button 
-                      type="button" 
-                      className="button" 
-                      style={{ 
-                        flex: 1,
-                        border: 'none', 
-                        background: newTx.direction === 'in' ? '#059669' : 'white', 
-                        color: newTx.direction === 'in' ? 'white' : '#111',
-                        padding: '12px 20px',
-                        fontSize: 16,
-                        fontWeight: 600
-                      }} 
-                      onClick={() => setNewTx(prev => ({ ...prev, direction: 'in' }))}
-                    >
-                      Input
-                    </button>
-                    <button 
-                      type="button" 
-                      className="button" 
-                      style={{ 
-                        flex: 1,
-                        border: 'none', 
-                        background: newTx.direction === 'out' ? '#dc2626' : 'white', 
-                        color: newTx.direction === 'out' ? 'white' : '#111',
-                        padding: '12px 20px',
-                        fontSize: 16,
-                        fontWeight: 600
-                      }} 
-                      onClick={() => setNewTx(prev => ({ ...prev, direction: 'out' }))}
-                    >
-                      Output
-                    </button>
+              {movementType === 'single' ? (
+                <form onSubmit={submitNewTransaction}>
+                  {/* Direction */}
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                      1. Transaction Type <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <div style={{ display: 'flex', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+                      <button 
+                        type="button" 
+                        className="button" 
+                        style={{ 
+                          flex: 1,
+                          border: 'none', 
+                          background: newTx.direction === 'in' ? '#059669' : 'white', 
+                          color: newTx.direction === 'in' ? 'white' : '#111',
+                          padding: '12px 20px',
+                          fontSize: 16,
+                          fontWeight: 600
+                        }} 
+                        onClick={() => setNewTx(prev => ({ ...prev, direction: 'in' }))}
+                      >
+                        Input
+                      </button>
+                      <button 
+                        type="button" 
+                        className="button" 
+                        style={{ 
+                          flex: 1,
+                          border: 'none', 
+                          background: newTx.direction === 'out' ? '#dc2626' : 'white', 
+                          color: newTx.direction === 'out' ? 'white' : '#111',
+                          padding: '12px 20px',
+                          fontSize: 16,
+                          fontWeight: 600
+                        }} 
+                        onClick={() => setNewTx(prev => ({ ...prev, direction: 'out' }))}
+                      >
+                        Output
+                      </button>
+                    </div>
                   </div>
-                </div>
 
                 {/* Item Selection */}
                 <div style={{ marginBottom: 24 }}>
@@ -1085,6 +1178,297 @@ export default function InventoryMovementsPage() {
                   </button>
                 </div>
               </form>
+              ) : (
+                <form onSubmit={submitBatchMovement}>
+                  {/* Direction */}
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                      1. Transaction Type <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <div style={{ display: 'flex', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+                      <button 
+                        type="button" 
+                        className="button" 
+                        style={{ 
+                          flex: 1,
+                          border: 'none', 
+                          background: batchDirection === 'in' ? '#059669' : 'white', 
+                          color: batchDirection === 'in' ? 'white' : '#111',
+                          padding: '12px 20px',
+                          fontSize: 16,
+                          fontWeight: 600
+                        }} 
+                        onClick={() => setBatchDirection('in')}
+                      >
+                        Input
+                      </button>
+                      <button 
+                        type="button" 
+                        className="button" 
+                        style={{ 
+                          flex: 1,
+                          border: 'none', 
+                          background: batchDirection === 'out' ? '#dc2626' : 'white', 
+                          color: batchDirection === 'out' ? 'white' : '#111',
+                          padding: '12px 20px',
+                          fontSize: 16,
+                          fontWeight: 600
+                        }} 
+                        onClick={() => setBatchDirection('out')}
+                      >
+                        Output
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Item Selection for Batch */}
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                      2. Add Items <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        className="input"
+                        placeholder="Search for an item..."
+                        value={newTx.selectedItem ? newTx.selectedItem.name : txQuery}
+                        onChange={(e) => { setNewTx(prev => ({ ...prev, selectedItem: null })); setTxQuery(e.target.value); }}
+                        style={{ width: '100%', padding: '12px 16px', fontSize: 16 }}
+                      />
+                      {txSuggestions.length > 0 && !newTx.selectedItem && (
+                        <div style={{ 
+                          position: 'absolute', 
+                          top: '100%', 
+                          left: 0, 
+                          right: 0, 
+                          background: 'white', 
+                          border: '1px solid #e5e7eb', 
+                          zIndex: 10, 
+                          borderRadius: 8, 
+                          overflow: 'hidden', 
+                          maxHeight: 260, 
+                          overflowY: 'auto',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        }}>
+                          {txSuggestions.map((it) => (
+                            <div 
+                              key={it._id} 
+                              style={{ 
+                                padding: '10px 16px', 
+                                cursor: 'pointer', 
+                                borderBottom: '1px solid #f3f4f6',
+                                display: 'flex',
+                                flexDirection: 'column'
+                              }} 
+                              onClick={() => { setNewTx(prev => ({ ...prev, selectedItem: it })); setTxQuery(''); setTxSuggestions([]); }}
+                            >
+                              <div style={{ fontWeight: 600, color: '#1f2937' }}>{it.name}</div>
+                              <div style={{ fontSize: 12, color: '#6b7280' }}>{it.type}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {newTx.selectedItem && (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ 
+                          padding: '12px 16px', 
+                          background: '#f9fafb', 
+                          borderRadius: 8, 
+                          border: '1px solid #e5e7eb',
+                          marginBottom: 12
+                        }}>
+                          <div style={{ fontWeight: 600, marginBottom: 8 }}>{newTx.selectedItem.name}</div>
+                          
+                          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+                            <div style={{ flex: 1 }}>
+                              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Quantity</label>
+                              <input
+                                type="number"
+                                className="input"
+                                value={newTx.quantity}
+                                onChange={(e) => setNewTx(prev => ({ ...prev, quantity: e.target.value }))}
+                                style={{ width: '100%', padding: '8px 12px' }}
+                                placeholder="0"
+                                step="0.01"
+                              />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <label style={{ display: 'block', fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Unit</label>
+                              <select
+                                className="select"
+                                value={newTx.usePack ? 'pack' : 'base'}
+                                onChange={(e) => setNewTx(prev => ({ ...prev, usePack: e.target.value === 'pack' }))}
+                                style={{ width: '100%', padding: '8px 12px' }}
+                              >
+                                <option value="pack">{newTx.selectedItem.purchasePackUnit || 'unit'}</option>
+                                <option value="base">{newTx.selectedItem.baseContentUnit || 'unit'}</option>
+                              </select>
+                            </div>
+                            <button
+                              type="button"
+                              className="button"
+                              onClick={addItemToBatch}
+                              style={{ 
+                                background: '#7c3aed', 
+                                color: 'white', 
+                                padding: '8px 16px',
+                                fontWeight: 600
+                              }}
+                            >
+                              + Add
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Batch Items List */}
+                    {batchItems.length > 0 && (
+                      <div style={{ 
+                        marginTop: 12, 
+                        padding: '16px', 
+                        background: '#f0f9ff', 
+                        borderRadius: 8,
+                        border: '1px solid #0ea5e9'
+                      }}>
+                        <div style={{ fontWeight: 600, marginBottom: 12, color: '#0369a1' }}>
+                          Batch Items ({batchItems.length})
+                        </div>
+                        {batchItems.map((bItem, index) => (
+                          <div 
+                            key={index}
+                            style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              padding: '8px 12px',
+                              background: 'white',
+                              borderRadius: 6,
+                              marginBottom: 8,
+                              border: '1px solid #e0f2fe'
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 500, fontSize: 14 }}>{bItem.item.name}</div>
+                              <div style={{ fontSize: 12, color: '#6b7280' }}>
+                                {bItem.quantity} {bItem.usePack ? (bItem.item.purchasePackUnit || 'unit') : (bItem.item.baseContentUnit || 'unit')}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeItemFromBatch(index)}
+                              style={{ 
+                                background: 'none', 
+                                border: 'none', 
+                                color: '#dc2626', 
+                                cursor: 'pointer',
+                                fontSize: 20,
+                                padding: '4px 8px'
+                              }}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Photo Upload */}
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                      3. Take Photo of All Items <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <div style={{ 
+                      padding: '16px', 
+                      border: '2px dashed #d1d5db', 
+                      borderRadius: 8, 
+                      background: '#f9fafb',
+                      textAlign: 'center'
+                    }}>
+                      <ImageUpload
+                        currentImageUrl={batchPhotoUrl}
+                        onImageUploaded={(url) => setBatchPhotoUrl(url || '')}
+                        uploadPreset="fan_movements"
+                        folder="fan-movements"
+                      />
+                      {batchPhotoUrl && (
+                        <div style={{ marginTop: 12 }}>
+                          <img
+                            src={batchPhotoUrl}
+                            alt="Batch movement photo"
+                            style={{
+                              maxWidth: '100%',
+                              maxHeight: 200,
+                              borderRadius: 6,
+                              border: '1px solid #e5e7eb'
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6b7280', marginTop: 8 }}>
+                      📸 Take one photo showing all items in this batch
+                    </div>
+                  </div>
+
+                  {/* Observations */}
+                  <div style={{ marginBottom: 24 }}>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                      4. Observations <span style={{ fontSize: 13, fontWeight: 400, color: '#6b7280' }}>(Optional)</span>
+                    </label>
+                    <textarea
+                      className="input"
+                      placeholder="Add any relevant notes..."
+                      value={batchObservations}
+                      onChange={(e) => setBatchObservations(e.target.value)}
+                      rows="3"
+                      style={{ width: '100%', padding: '12px 16px', fontSize: 16 }}
+                    ></textarea>
+                  </div>
+
+                  {/* Person Name */}
+                  <div style={{ marginBottom: 30 }}>
+                    <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                      5. Person Name <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
+                    <input
+                      className="input"
+                      placeholder="Enter your name"
+                      value={batchPersonName}
+                      onChange={(e) => setBatchPersonName(e.target.value)}
+                      style={{ width: '100%', padding: '12px 16px', fontSize: 16 }}
+                      required
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                    <button 
+                      type="button" 
+                      className="button" 
+                      onClick={() => setShowNewTransaction(false)}
+                      style={{ padding: '12px 24px', fontSize: 16 }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="button" 
+                      style={{ 
+                        background: batchDirection === 'in' ? '#059669' : '#dc2626', 
+                        color: 'white',
+                        padding: '12px 24px',
+                        fontSize: 16,
+                        fontWeight: 600
+                      }} 
+                      disabled={submitting}
+                    >
+                      {submitting ? 'Saving...' : `Save Batch (${batchItems.length} items)`}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </>

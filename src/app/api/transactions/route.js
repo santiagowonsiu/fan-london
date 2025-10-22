@@ -8,9 +8,9 @@ import { ActivityLog } from '@/lib/models/ActivityLog';
 export async function POST(request) {
   await dbConnect();
   const body = await request.json();
-  const { itemId, direction, quantity, quantityBase, quantityPack, unitUsed, observations, personName, photoUrl } = body;
+  const { itemId, direction, quantity, quantityBase, quantityPack, unitUsed, observations, personName, photoUrl, orderId, orderType } = body;
   
-  console.log('Received transaction data:', { itemId, direction, quantity, personName, photoUrl });
+  console.log('Received transaction data:', { itemId, direction, quantity, personName, photoUrl, orderId, orderType });
 
   if (!itemId || !mongoose.isValidObjectId(itemId)) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 });
@@ -38,7 +38,9 @@ export async function POST(request) {
       unitUsed: unitUsed || 'pack',
       observations: observations || undefined,
       personName: personName || undefined,
-      photoUrl: photoUrl || undefined
+      photoUrl: photoUrl || undefined,
+      orderId: orderId || undefined,
+      orderType: orderType || 'individual'
     };
     
     console.log('Creating transaction with data:', txData);
