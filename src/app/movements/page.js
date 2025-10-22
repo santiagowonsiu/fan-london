@@ -57,6 +57,7 @@ export default function InventoryMovementsPage() {
 
   // View mode
   const [viewMode, setViewMode] = useState('item'); // 'item' or 'order'
+  const [expandedOrders, setExpandedOrders] = useState(new Set()); // Set of expanded orderIds
 
   // Batch movement state
   const [batchItems, setBatchItems] = useState([]); // Array of {item, quantity, usePack}
@@ -168,6 +169,59 @@ export default function InventoryMovementsPage() {
     setExpandedId(expandedId === id ? null : id);
   }
 
+  function toggleOrderExpanded(orderId) {
+    setExpandedOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  }
+
+  // Group transactions by order for "By Order" view
+  function groupTransactionsByOrder(transactions) {
+    const orders = {};
+    const singleTransactions = [];
+
+    transactions.forEach(tx => {
+      if (tx.orderId && tx.orderType === 'consolidated') {
+        if (!orders[tx.orderId]) {
+          orders[tx.orderId] = {
+            orderId: tx.orderId,
+            orderType: tx.orderType,
+            items: [],
+            date: tx.createdAt,
+            direction: tx.direction,
+            personName: tx.personName,
+            observations: tx.observations,
+            photoUrl: tx.photoUrl
+          };
+        }
+        orders[tx.orderId].items.push(tx);
+      } else {
+        // Generate orderId for single movements if they don't have one
+        const singleOrderId = tx.orderId || `SINGLE-${tx._id}`;
+        singleTransactions.push({
+          orderId: singleOrderId,
+          orderType: 'individual',
+          items: [tx],
+          date: tx.createdAt,
+          direction: tx.direction,
+          personName: tx.personName,
+          observations: tx.observations,
+          photoUrl: tx.photoUrl
+        });
+      }
+    });
+
+    return [...Object.values(orders), ...singleTransactions].sort((a, b) => 
+      new Date(b.date) - new Date(a.date)
+    );
+  }
+
   function openImageModal(imageUrl) {
     setModalImageUrl(imageUrl);
     setShowImageModal(true);
@@ -193,7 +247,11 @@ export default function InventoryMovementsPage() {
     return { ...tx, stockAtTime: stockUpToHere };
   }).reverse();
 
-  const totalPages = Math.ceil(rowsWithStock.length / itemsPerPage);
+  // For order view, calculate pagination based on grouped orders
+  const groupedOrders = viewMode === 'order' ? groupTransactionsByOrder(filteredRows) : [];
+  const totalPages = viewMode === 'order' 
+    ? Math.ceil(groupedOrders.length / itemsPerPage)
+    : Math.ceil(rowsWithStock.length / itemsPerPage);
   const paginatedRows = rowsWithStock.slice(
     (page - 1) * itemsPerPage,
     page * itemsPerPage
@@ -201,7 +259,7 @@ export default function InventoryMovementsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [startDate, endDate, selectedItems, directionFilter]);
+  }, [startDate, endDate, selectedItems, directionFilter, viewMode]);
 
   function startEdit(tx) {
     setEditId(tx._id);
@@ -592,28 +650,28 @@ export default function InventoryMovementsPage() {
 
       {/* Transaction Table */}
       <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th className="th" style={{ minWidth: 140 }}>Date/Time</th>
-              <th className="th" style={{ minWidth: 200 }}>Item</th>
-              <th className="th" style={{ minWidth: 120 }}>Type</th>
-              <th className="th" style={{ minWidth: 90 }}>Direction</th>
-              <th className="th" style={{ textAlign: 'right', minWidth: 90 }} title="Quantity in base content units">Base Qty</th>
-              <th className="th" style={{ textAlign: 'right', minWidth: 90 }} title="Quantity in purchase pack units">Pack Qty</th>
-              <th className="th" style={{ textAlign: 'right', minWidth: 100 }} title="Cumulative stock at this point in time">Stock at Time</th>
-              <th className="th" style={{ minWidth: 100 }}>Person</th>
-              {viewMode === 'item' && <th className="th" style={{ minWidth: 80 }}>Photo</th>}
-              {viewMode === 'order' && <th className="th" style={{ minWidth: 120 }}>Order ID</th>}
-              {isEditMode && <th className="th" style={{ minWidth: 180 }}>Actions</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td className="td" colSpan={cols}>Loading...</td></tr>
-            ) : paginatedRows.length === 0 ? (
-              <tr><td className="td" colSpan={cols}>No transactions found</td></tr>
-            ) : paginatedRows.map((tx) => (
+        {viewMode === 'item' ? (
+          <table className="table">
+            <thead>
+              <tr>
+                <th className="th" style={{ minWidth: 140 }}>Date/Time</th>
+                <th className="th" style={{ minWidth: 200 }}>Item</th>
+                <th className="th" style={{ minWidth: 120 }}>Type</th>
+                <th className="th" style={{ minWidth: 90 }}>Direction</th>
+                <th className="th" style={{ textAlign: 'right', minWidth: 90 }} title="Quantity in base content units">Base Qty</th>
+                <th className="th" style={{ textAlign: 'right', minWidth: 90 }} title="Quantity in purchase pack units">Pack Qty</th>
+                <th className="th" style={{ textAlign: 'right', minWidth: 100 }} title="Cumulative stock at this point in time">Stock at Time</th>
+                <th className="th" style={{ minWidth: 100 }}>Person</th>
+                <th className="th" style={{ minWidth: 80 }}>Photo</th>
+                {isEditMode && <th className="th" style={{ minWidth: 180 }}>Actions</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td className="td" colSpan={cols}>Loading...</td></tr>
+              ) : paginatedRows.length === 0 ? (
+                <tr><td className="td" colSpan={cols}>No transactions found</td></tr>
+              ) : paginatedRows.map((tx) => (
               <Fragment key={tx._id}>
                 <tr style={{ cursor: tx.observations ? 'pointer' : 'default' }} onClick={() => tx.observations && toggleExpanded(tx._id)}>
                   <td className="td" style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
@@ -697,81 +755,40 @@ export default function InventoryMovementsPage() {
                   <td className="td">
                     {tx.personName || <span style={{ color: '#9ca3af' }}>-</span>}
                   </td>
-                  {viewMode === 'item' && (
-                    <td className="td" style={{ padding: 4 }}>
-                      {tx.photoUrl ? (
-                        <img
-                          src={tx.photoUrl}
-                          alt="Movement photo"
-                          style={{
-                            width: 50,
-                            height: 50,
-                            objectFit: 'cover',
-                            borderRadius: 4,
-                            border: '1px solid #e5e7eb',
-                            cursor: 'pointer'
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openImageModal(tx.photoUrl);
-                          }}
-                        />
-                      ) : (
-                        <div style={{
+                  <td className="td" style={{ padding: 4 }}>
+                    {tx.photoUrl ? (
+                      <img
+                        src={tx.photoUrl}
+                        alt="Movement photo"
+                        style={{
                           width: 50,
                           height: 50,
-                          background: '#f3f4f6',
+                          objectFit: 'cover',
                           borderRadius: 4,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 16,
-                          color: '#9ca3af'
-                        }}>
-                          📷
-                        </div>
-                      )}
-                    </td>
-                  )}
-                  {viewMode === 'order' && (
-                    <td className="td">
-                      {tx.orderId ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{
-                            fontSize: 12,
-                            fontWeight: 500,
-                            color: tx.orderType === 'consolidated' ? '#7c3aed' : '#6b7280',
-                            background: tx.orderType === 'consolidated' ? '#f3e8ff' : '#f9fafb',
-                            padding: '4px 8px',
-                            borderRadius: 4,
-                            border: tx.orderType === 'consolidated' ? '1px solid #c4b5fd' : '1px solid #e5e7eb'
-                          }}>
-                            {tx.orderType === 'consolidated' ? '📦' : '📋'} {tx.orderId.substring(0, 15)}...
-                          </span>
-                          {tx.photoUrl && (
-                            <img
-                              src={tx.photoUrl}
-                              alt="Order photo"
-                              style={{
-                                width: 32,
-                                height: 32,
-                                objectFit: 'cover',
-                                borderRadius: 4,
-                                border: '1px solid #e5e7eb',
-                                cursor: 'pointer'
-                              }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openImageModal(tx.photoUrl);
-                              }}
-                            />
-                          )}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 12, color: '#9ca3af' }}>Single</span>
-                      )}
-                    </td>
-                  )}
+                          border: '1px solid #e5e7eb',
+                          cursor: 'pointer'
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openImageModal(tx.photoUrl);
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: 50,
+                        height: 50,
+                        background: '#f3f4f6',
+                        borderRadius: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 16,
+                        color: '#9ca3af'
+                      }}>
+                        📷
+                      </div>
+                    )}
+                  </td>
                   {isEditMode && (
                     <td className="td" style={{ display: 'flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
                       {editId === tx._id ? (
@@ -829,6 +846,179 @@ export default function InventoryMovementsPage() {
             ))}
           </tbody>
         </table>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th className="th" style={{ width: 50 }}></th>
+                <th className="th" style={{ minWidth: 140 }}>Date/Time</th>
+                <th className="th" style={{ minWidth: 150 }}>Order ID</th>
+                <th className="th" style={{ minWidth: 80, textAlign: 'center' }}>Items</th>
+                <th className="th" style={{ minWidth: 90 }}>Direction</th>
+                <th className="th" style={{ minWidth: 100 }}>Person</th>
+                <th className="th" style={{ minWidth: 80 }}>Photo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td className="td" colSpan={7}>Loading...</td></tr>
+              ) : filteredRows.length === 0 ? (
+                <tr><td className="td" colSpan={7}>No transactions found</td></tr>
+              ) : groupTransactionsByOrder(filteredRows).slice((page - 1) * itemsPerPage, page * itemsPerPage).map((order) => (
+                <Fragment key={order.orderId}>
+                  <tr 
+                    style={{ cursor: 'pointer', background: expandedOrders.has(order.orderId) ? '#f9fafb' : 'white' }}
+                    onClick={() => toggleOrderExpanded(order.orderId)}
+                  >
+                    <td className="td" style={{ textAlign: 'center', fontSize: 18 }}>
+                      {expandedOrders.has(order.orderId) ? '▼' : '▶'}
+                    </td>
+                    <td className="td" style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
+                      {new Date(order.date).toLocaleString('en-GB', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </td>
+                    <td className="td">
+                      <span style={{
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: order.orderType === 'consolidated' ? '#7c3aed' : '#6b7280',
+                        background: order.orderType === 'consolidated' ? '#f3e8ff' : '#f9fafb',
+                        padding: '4px 8px',
+                        borderRadius: 4,
+                        border: order.orderType === 'consolidated' ? '1px solid #c4b5fd' : '1px solid #e5e7eb'
+                      }}>
+                        {order.orderType === 'consolidated' ? '📦' : '📋'} {order.orderId.substring(0, 20)}{order.orderId.length > 20 ? '...' : ''}
+                      </span>
+                    </td>
+                    <td className="td" style={{ textAlign: 'center' }}>
+                      <span style={{
+                        background: '#dbeafe',
+                        color: '#1e40af',
+                        padding: '4px 12px',
+                        borderRadius: 12,
+                        fontSize: 13,
+                        fontWeight: 600
+                      }}>
+                        {order.items.length}
+                      </span>
+                    </td>
+                    <td className="td">
+                      <span style={{
+                        padding: '4px 8px',
+                        borderRadius: 4,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: order.direction === 'in' ? '#d1fae5' : '#fee2e2',
+                        color: order.direction === 'in' ? '#065f46' : '#991b1b'
+                      }}>
+                        {order.direction === 'in' ? 'Input' : 'Output'}
+                      </span>
+                    </td>
+                    <td className="td">
+                      {order.personName || <span style={{ color: '#9ca3af' }}>-</span>}
+                    </td>
+                    <td className="td" style={{ padding: 4 }}>
+                      {order.photoUrl ? (
+                        <img
+                          src={order.photoUrl}
+                          alt="Order photo"
+                          style={{
+                            width: 50,
+                            height: 50,
+                            objectFit: 'cover',
+                            borderRadius: 4,
+                            border: '1px solid #e5e7eb',
+                            cursor: 'pointer'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openImageModal(order.photoUrl);
+                          }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: 50,
+                          height: 50,
+                          background: '#f3f4f6',
+                          borderRadius: 4,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 16,
+                          color: '#9ca3af'
+                        }}>
+                          📷
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                  {expandedOrders.has(order.orderId) && (
+                    <tr>
+                      <td colSpan={7} style={{ padding: 0, background: '#f9fafb' }}>
+                        <div style={{ padding: '16px 24px' }}>
+                          <div style={{ fontWeight: 600, marginBottom: 12, color: '#374151' }}>
+                            Order Items:
+                          </div>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <th style={{ textAlign: 'left', padding: '8px', fontSize: 12, fontWeight: 600, color: '#6b7280' }}>Item</th>
+                                <th style={{ textAlign: 'left', padding: '8px', fontSize: 12, fontWeight: 600, color: '#6b7280' }}>Type</th>
+                                <th style={{ textAlign: 'right', padding: '8px', fontSize: 12, fontWeight: 600, color: '#6b7280' }}>Base Qty</th>
+                                <th style={{ textAlign: 'right', padding: '8px', fontSize: 12, fontWeight: 600, color: '#6b7280' }}>Pack Qty</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {order.items.map((item, idx) => (
+                                <tr key={idx} style={{ borderBottom: idx < order.items.length - 1 ? '1px solid #f3f4f6' : 'none' }}>
+                                  <td style={{ padding: '8px', fontSize: 13 }}>{item.itemId?.name || '-'}</td>
+                                  <td style={{ padding: '8px', fontSize: 12, color: '#6b7280' }}>{item.itemId?.type || '-'}</td>
+                                  <td style={{ padding: '8px', fontSize: 13, textAlign: 'right' }}>
+                                    <span style={{ 
+                                      fontWeight: 600,
+                                      color: item.direction === 'in' ? '#059669' : '#dc2626'
+                                    }}>
+                                      {item.direction === 'in' ? '+' : '-'}{(item.quantityBase || item.quantity || 0).toFixed(2)}
+                                    </span>
+                                    <span style={{ fontSize: 11, color: '#9ca3af', marginLeft: 4 }}>
+                                      {item.itemId?.baseContentUnit || 'unit'}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '8px', fontSize: 13, textAlign: 'right' }}>
+                                    <span style={{ 
+                                      fontWeight: 600,
+                                      color: item.direction === 'in' ? '#059669' : '#dc2626'
+                                    }}>
+                                      {item.direction === 'in' ? '+' : '-'}{(item.quantityPack || item.quantity || 0).toFixed(2)}
+                                    </span>
+                                    <span style={{ fontSize: 11, color: '#9ca3af', marginLeft: 4 }}>
+                                      {item.itemId?.purchasePackUnit || 'unit'}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                          {order.observations && (
+                            <div style={{ marginTop: 12, padding: '12px', background: 'white', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+                              <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>Observations:</div>
+                              <div style={{ fontSize: 13, color: '#374151', fontStyle: 'italic' }}>"{order.observations}"</div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Pagination */}
