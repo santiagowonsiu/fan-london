@@ -9,9 +9,9 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, '..', '.env.local') });
 
 cloudinary.config({
-  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'dlm0zpsuf',
+  api_key: process.env.CLOUDINARY_API_KEY || '669413771595648',
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'COzxsGxoT9HG1wa76TsscSJw92E',
 });
 
 async function uploadAssets() {

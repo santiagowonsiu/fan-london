@@ -38,32 +38,46 @@ export default function ImageUpload({ currentImageUrl, onImageUploaded }) {
           multiple: false,
           maxFileSize: 5000000, // 5MB max
           clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
-          cropping: true,
-          croppingAspectRatio: 1, // Square crop (1:1)
-          croppingDefaultSelectionRatio: 1,
-          croppingShowDimensions: true,
+          cropping: false, // Optional cropping
+          showSkipCropButton: true, // Allow skipping crop
           folder: 'fan-products',
           resourceType: 'image',
-          transformation: [
-            { width: 800, height: 800, crop: 'fill', quality: 'auto:good' }
-          ],
         },
         (error, result) => {
           if (error) {
             console.error('Upload error:', error);
-            alert('Upload failed: ' + error.message);
+            const errorMsg = error.message || error.statusText || 'Unknown error';
+            alert('Upload failed: ' + errorMsg + '\n\nPlease check:\n1. Upload preset "fan_products" exists\n2. Preset is set to "Unsigned"');
             setUploading(false);
             return;
           }
 
+          if (!result) {
+            console.error('No result from upload');
+            setUploading(false);
+            return;
+          }
+
+          console.log('Upload event:', result.event);
+
           if (result.event === 'success') {
             console.log('Upload successful:', result.info);
-            onImageUploaded(result.info.secure_url);
-            setUploading(false);
-            widgetRef.current.close();
+            if (result.info && result.info.secure_url) {
+              onImageUploaded(result.info.secure_url);
+              setUploading(false);
+              widgetRef.current.close();
+            } else {
+              console.error('No secure_url in result');
+              alert('Upload completed but no URL received');
+              setUploading(false);
+            }
           }
 
           if (result.event === 'close') {
+            setUploading(false);
+          }
+
+          if (result.event === 'abort') {
             setUploading(false);
           }
         }
