@@ -615,6 +615,7 @@ export default function InternalOrdersPage() {
                     background: isCompleted ? '#f9fafb' : 'white',
                     border: `1px solid ${isCompleted ? '#d1d5db' : '#e5e7eb'}`,
                     borderRadius: 8,
+                    filter: isCompleted ? 'grayscale(1)' : 'none',
                     opacity: isCompleted ? 0.75 : 1
                   }}
                 >
