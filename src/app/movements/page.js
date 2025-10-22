@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { fetchItems, fetchTransactions, updateTransaction, deleteTransaction, postTransaction } from '@/lib/api';
 import ImageUpload from '@/components/ImageUpload';
 
@@ -481,8 +481,8 @@ export default function InventoryMovementsPage() {
             ) : paginatedRows.length === 0 ? (
               <tr><td className="td" colSpan={cols}>No transactions found</td></tr>
             ) : paginatedRows.map((tx) => (
-              <>
-                <tr key={tx._id} style={{ cursor: tx.observations ? 'pointer' : 'default' }} onClick={() => tx.observations && toggleExpanded(tx._id)}>
+              <Fragment key={tx._id}>
+                <tr style={{ cursor: tx.observations ? 'pointer' : 'default' }} onClick={() => tx.observations && toggleExpanded(tx._id)}>
                   <td className="td" style={{ whiteSpace: 'nowrap', fontSize: 13 }}>
                     {new Date(tx.createdAt).toLocaleString('en-GB', {
                       day: '2-digit',
@@ -651,7 +651,7 @@ export default function InventoryMovementsPage() {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             ))}
           </tbody>
         </table>
