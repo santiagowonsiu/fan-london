@@ -11,6 +11,7 @@ const itemSchema = new mongoose.Schema(
     purchasePackQuantity: { type: Number },
     purchasePackUnit: { type: String },
     imageUrl: { type: String },
+    minStock: { type: Number, default: 0 }, // Minimum stock level in pack units
   },
   { timestamps: true }
 );

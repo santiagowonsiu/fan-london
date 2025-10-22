@@ -44,7 +44,7 @@ export async function GET(request) {
 export async function POST(request) {
   await dbConnect();
   const body = await request.json();
-  const { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit, imageUrl } = body;
+  const { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit, imageUrl, minStock } = body;
   
   try {
     const item = await Item.create({
@@ -56,6 +56,7 @@ export async function POST(request) {
       purchasePackQuantity,
       purchasePackUnit,
       imageUrl,
+      minStock: minStock || 0,
     });
 
     // Log the activity

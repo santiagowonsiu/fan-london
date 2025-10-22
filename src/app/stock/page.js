@@ -253,15 +253,22 @@ export default function CurrentStockPage() {
               <th className="th" style={{ minWidth: 120 }}>Type</th>
               <th className="th" style={{ textAlign: 'right', minWidth: 100 }} title="Stock in base content units">Base Stock</th>
               <th className="th" style={{ textAlign: 'right', minWidth: 100 }} title="Stock in purchase pack units">Pack Stock</th>
+              <th className="th" style={{ textAlign: 'center', width: 100 }} title="Minimum stock level">Min Stock</th>
+              <th className="th" style={{ textAlign: 'center', width: 120 }} title="Status indicator">Status</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td className="td" colSpan={4}>Loading...</td></tr>
+              <tr><td className="td" colSpan={6}>Loading...</td></tr>
             ) : filteredRows.length === 0 ? (
-              <tr><td className="td" colSpan={4}>No items found</td></tr>
-            ) : filteredRows.map((r) => (
-              <tr key={r.itemId}>
+              <tr><td className="td" colSpan={6}>No items found</td></tr>
+            ) : filteredRows.map((r) => {
+              const minStock = r.minStock || 0;
+              const currentStock = r.stockPack || 0;
+              const needsRestocking = currentStock < minStock;
+              
+              return (
+              <tr key={r.itemId} style={{ background: needsRestocking ? '#fef2f2' : 'transparent' }}>
                 <td className="td" style={{ maxWidth: 300 }}>
                   <div style={{ wordBreak: 'break-word' }}>{r.name}</div>
                 </td>
@@ -288,8 +295,51 @@ export default function CurrentStockPage() {
                     {r.purchasePackUnit || 'unit'}
                   </div>
                 </td>
+                <td className="td" style={{ textAlign: 'center' }}>
+                  <span style={{ 
+                    fontWeight: 600,
+                    color: minStock > 0 ? '#1f2937' : '#9ca3af'
+                  }}>
+                    {minStock}
+                  </span>
+                  <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 400 }}>
+                    {r.purchasePackUnit || 'unit'}
+                  </div>
+                </td>
+                <td className="td" style={{ textAlign: 'center' }}>
+                  {minStock > 0 ? (
+                    needsRestocking ? (
+                      <span style={{
+                        padding: '4px 12px',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        background: '#fee2e2',
+                        color: '#dc2626',
+                        display: 'inline-block'
+                      }}>
+                        ⚠️ RESTOCK
+                      </span>
+                    ) : (
+                      <span style={{
+                        padding: '4px 12px',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        background: '#d1fae5',
+                        color: '#059669',
+                        display: 'inline-block'
+                      }}>
+                        ✓ OK
+                      </span>
+                    )
+                  ) : (
+                    <span style={{ color: '#9ca3af', fontSize: 12 }}>-</span>
+                  )}
+                </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

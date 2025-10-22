@@ -38,18 +38,19 @@ export async function GET() {
       },
     },
     { $unwind: '$item' },
-    {
-      $project: {
-        _id: 0,
-        itemId: '$item._id',
-        name: '$item.name',
-        type: '$item.type',
-        baseContentUnit: '$item.baseContentUnit',
-        purchasePackUnit: '$item.purchasePackUnit',
-        stockBase: 1,
-        stockPack: 1,
+      {
+        $project: {
+          _id: 0,
+          itemId: '$item._id',
+          name: '$item.name',
+          type: '$item.type',
+          baseContentUnit: '$item.baseContentUnit',
+          purchasePackUnit: '$item.purchasePackUnit',
+          minStock: '$item.minStock',
+          stockBase: 1,
+          stockPack: 1,
+        },
       },
-    },
     { $sort: { name: 1 } },
   ];
 

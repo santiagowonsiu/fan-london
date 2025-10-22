@@ -8,7 +8,7 @@ export async function PUT(request, context) {
   const params = await context.params;
   const { id } = params;
   const body = await request.json();
-  const { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit, imageUrl } = body;
+  const { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit, imageUrl, minStock } = body;
 
   try {
     const oldItem = await Item.findById(id);
@@ -18,7 +18,7 @@ export async function PUT(request, context) {
 
     const item = await Item.findByIdAndUpdate(
       id,
-      { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit, imageUrl },
+      { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit, imageUrl, minStock },
       { new: true, runValidators: true }
     );
 

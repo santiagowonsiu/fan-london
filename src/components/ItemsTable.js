@@ -18,6 +18,7 @@ export default function ItemsTable() {
     baseContentUnit: '',
     purchasePackQuantity: '',
     purchasePackUnit: '',
+    minStock: '',
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -58,6 +59,7 @@ export default function ItemsTable() {
       baseContentUnit: item.baseContentUnit ?? '',
       purchasePackQuantity: item.purchasePackQuantity ?? '',
       purchasePackUnit: item.purchasePackUnit ?? '',
+      minStock: item.minStock ?? '',
     });
   }
 
@@ -70,6 +72,7 @@ export default function ItemsTable() {
       baseContentUnit: '',
       purchasePackQuantity: '',
       purchasePackUnit: '',
+      minStock: '',
     });
   }
 
@@ -82,6 +85,7 @@ export default function ItemsTable() {
         baseContentUnit: draft.baseContentUnit || undefined,
         purchasePackQuantity: draft.purchasePackQuantity === '' ? undefined : Number(draft.purchasePackQuantity),
         purchasePackUnit: draft.purchasePackUnit || undefined,
+        minStock: draft.minStock === '' ? undefined : Number(draft.minStock),
       };
       const updated = await updateItem(id, payload);
       setItems((prev) => prev.map((it) => (it._id === id ? updated : it)));
@@ -120,7 +124,7 @@ export default function ItemsTable() {
     load();
   }
 
-  const baseCols = 6;
+  const baseCols = 7; // Added minStock column
   const cols = isEditMode ? baseCols + 2 : baseCols;
 
   return (
@@ -177,6 +181,7 @@ export default function ItemsTable() {
               <th className="th" title="Unit of the base content (e.g., g, kg, ml, l, bags, pieces).">Unit</th>
               <th className="th" title="Purchase Pack: how many base units are in one purchasable unit (defaults to 1).">Purchase Pack</th>
               <th className="th" title="Unit for the purchase pack (e.g., unit, box, bag, pack).">Pack Unit</th>
+              <th className="th" style={{ width: 100 }} title="Minimum stock level to maintain (in pack units). Alert when stock falls below this number.">Min Stock</th>
               {isEditMode && <th className="th">Archived</th>}
               {isEditMode && <th className="th">Actions</th>}
             </tr>
@@ -268,6 +273,26 @@ export default function ItemsTable() {
                       />
                     ) : (
                       item.purchasePackUnit ?? '-'
+                    )}
+                  </td>
+                  <td className="td" style={{ width: 100, textAlign: 'center' }}>
+                    {editId === item._id ? (
+                      <input
+                        className="input"
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={draft.minStock}
+                        onChange={(e) => setDraft((s) => ({ ...s, minStock: e.target.value }))}
+                        style={{ width: 100, textAlign: 'center' }}
+                      />
+                    ) : (
+                      <span style={{ 
+                        fontWeight: 600,
+                        color: (item.minStock || 0) > 0 ? '#1f2937' : '#9ca3af'
+                      }}>
+                        {item.minStock || 0}
+                      </span>
                     )}
                   </td>
                   {isEditMode && (
