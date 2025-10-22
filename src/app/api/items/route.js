@@ -4,6 +4,7 @@ import { Item } from '@/lib/models/Item';
 import { ActivityLog } from '@/lib/models/ActivityLog';
 
 export async function GET(request) {
+  console.log('MONGODB_URI:', process.env.MONGODB_URI ? 'SET' : 'NOT SET');
   await dbConnect();
   const { searchParams } = new URL(request.url);
   const archived = searchParams.get('archived');
