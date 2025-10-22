@@ -19,7 +19,7 @@ const internalOrderItemSchema = new mongoose.Schema({
 
 const internalOrderSchema = new mongoose.Schema(
   {
-    orderNumber: { type: String, unique: true, required: true }, // e.g., "IO-20251021-001"
+    orderNumber: { type: String, unique: true }, // e.g., "IO-20251021-001" - auto-generated
     department: { 
       type: String, 
       enum: ['Kitchen', 'Bar', 'FOH'], 
@@ -41,9 +41,15 @@ const internalOrderSchema = new mongoose.Schema(
 internalOrderSchema.pre('save', async function(next) {
   if (!this.orderNumber) {
     const date = new Date().toISOString().split('T')[0].replace(/-/g, '');
-    const count = await mongoose.model('InternalOrder').countDocuments({
-      createdAt: { $gte: new Date(new Date().setHours(0, 0, 0, 0)) }
+    
+    // Count orders created today
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const count = await this.constructor.countDocuments({
+      createdAt: { $gte: startOfDay }
     });
+    
     this.orderNumber = `IO-${date}-${String(count + 1).padStart(3, '0')}`;
   }
   next();
