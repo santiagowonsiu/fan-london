@@ -19,9 +19,9 @@ async function uploadAssets() {
     console.log('🚀 Uploading assets to Cloudinary...\n');
 
     // Upload the landing GIF
-    const gifPath = join(__dirname, '..', 'src/assets/images/IMG_1692.gif');
+    const gifPath = join(__dirname, '..', 'src/assets/images/IMG_1692 (2).gif');
     
-    console.log('📤 Uploading landing GIF (this may take a while, it\'s 188MB)...');
+    console.log('📤 Uploading compressed landing GIF (84MB)...');
     const result = await cloudinary.uploader.upload(gifPath, {
       folder: 'fan-london',
       resource_type: 'image',
