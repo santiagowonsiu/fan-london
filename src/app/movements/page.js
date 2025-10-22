@@ -52,6 +52,9 @@ export default function InventoryMovementsPage() {
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState('');
 
+  // Movement type
+  const [movementType, setMovementType] = useState('single'); // 'single' or 'batch'
+
   useEffect(() => {
     loadTransactions();
     loadItems();
@@ -256,6 +259,7 @@ export default function InventoryMovementsPage() {
     
     setSubmitting(true);
     try {
+      console.log('Submitting transaction with photoUrl:', newTx.photoUrl);
       await postTransaction({ 
         itemId: newTx.selectedItem._id, 
         direction: newTx.direction, 
@@ -295,14 +299,24 @@ export default function InventoryMovementsPage() {
     <div className="app-container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
         <h2 className="page-title" style={{ fontSize: 20, margin: 0 }}>Inventory Movements</h2>
-        <button
-          type="button"
-          className="button primary"
-          onClick={() => setShowNewTransaction(true)}
-          style={{ fontSize: 16, padding: '10px 20px' }}
-        >
-          + New Movement
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            type="button"
+            className="button primary"
+            onClick={() => { setMovementType('single'); setShowNewTransaction(true); }}
+            style={{ fontSize: 16, padding: '10px 20px' }}
+          >
+            + Single Movement
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={() => { setMovementType('batch'); setShowNewTransaction(true); }}
+            style={{ fontSize: 16, padding: '10px 20px', background: '#7c3aed', color: 'white' }}
+          >
+            + Batch Movement
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -708,7 +722,9 @@ export default function InventoryMovementsPage() {
             
             <div style={{ padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>New Movement</h2>
+                <h2 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
+                  {movementType === 'single' ? 'Single Movement' : 'Batch Movement'}
+                </h2>
                 <button
                   type="button"
                   onClick={() => setShowNewTransaction(false)}

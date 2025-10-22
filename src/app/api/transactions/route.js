@@ -9,6 +9,8 @@ export async function POST(request) {
   await dbConnect();
   const body = await request.json();
   const { itemId, direction, quantity, quantityBase, quantityPack, unitUsed, observations, personName, photoUrl } = body;
+  
+  console.log('Received transaction data:', { itemId, direction, quantity, personName, photoUrl });
 
   if (!itemId || !mongoose.isValidObjectId(itemId)) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 });
@@ -27,7 +29,7 @@ export async function POST(request) {
   }
 
   try {
-    const tx = await Transaction.create({ 
+    const txData = { 
       itemId, 
       direction, 
       quantity: qty,
@@ -37,7 +39,11 @@ export async function POST(request) {
       observations: observations || undefined,
       personName: personName || undefined,
       photoUrl: photoUrl || undefined
-    });
+    };
+    
+    console.log('Creating transaction with data:', txData);
+    const tx = await Transaction.create(txData);
+    console.log('Created transaction:', tx);
 
     // Don't log transaction_added to Activity Log (too much noise)
     
