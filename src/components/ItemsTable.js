@@ -85,9 +85,11 @@ export default function ItemsTable() {
         baseContentUnit: draft.baseContentUnit || undefined,
         purchasePackQuantity: draft.purchasePackQuantity === '' ? undefined : Number(draft.purchasePackQuantity),
         purchasePackUnit: draft.purchasePackUnit || undefined,
-        minStock: draft.minStock === '' ? undefined : Number(draft.minStock),
+        minStock: draft.minStock === '' ? 0 : Number(draft.minStock),
       };
+      console.log('Saving item with payload:', payload);
       const updated = await updateItem(id, payload);
+      console.log('Updated item received:', updated);
       setItems((prev) => prev.map((it) => (it._id === id ? updated : it)));
       cancelEdit();
     } catch (e) {

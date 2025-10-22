@@ -16,11 +16,27 @@ export async function PUT(request, context) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
+    console.log('Updating item with minStock:', minStock);
+    
+    const updateData = {
+      type,
+      name,
+      archived,
+      baseContentValue,
+      baseContentUnit,
+      purchasePackQuantity,
+      purchasePackUnit,
+      imageUrl,
+      minStock: minStock !== undefined ? minStock : oldItem.minStock
+    };
+
     const item = await Item.findByIdAndUpdate(
       id,
-      { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit, imageUrl, minStock },
+      updateData,
       { new: true, runValidators: true }
     );
+    
+    console.log('Updated item minStock:', item.minStock);
 
     // Log the activity
     await ActivityLog.create({
