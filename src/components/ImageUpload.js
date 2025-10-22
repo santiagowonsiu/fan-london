@@ -24,6 +24,10 @@ export default function ImageUpload({ currentImageUrl, onImageUploaded }) {
     }
 
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    
+    console.log('Cloudinary cloud name:', cloudName);
+    console.log('All env vars:', process.env);
+    
     if (!cloudName) {
       alert('Cloudinary is not configured. Please add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME to environment variables.');
       return;
