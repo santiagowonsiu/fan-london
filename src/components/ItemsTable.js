@@ -156,7 +156,13 @@ export default function ItemsTable() {
         <button 
           type="button" 
           className={`button ${isEditMode ? 'primary' : ''}`} 
-          onClick={() => setIsEditMode(!isEditMode)}
+          onClick={() => {
+            if (isEditMode) {
+              // Exit edit mode - close any open edits
+              cancelEdit();
+            }
+            setIsEditMode(!isEditMode);
+          }}
         >
           {isEditMode ? 'Exit Edit' : 'Edit Mode'}
         </button>
@@ -229,7 +235,7 @@ export default function ItemsTable() {
                         step="0.01"
                         value={draft.baseContentValue}
                         onChange={(e) => setDraft((s) => ({ ...s, baseContentValue: e.target.value }))}
-                        style={{ width: 120 }}
+                        style={{ width: '100%', maxWidth: 110, boxSizing: 'border-box' }}
                       />
                     ) : (
                       item.baseContentValue ?? '-'
@@ -241,8 +247,8 @@ export default function ItemsTable() {
                         className="input"
                         value={draft.baseContentUnit}
                         onChange={(e) => setDraft((s) => ({ ...s, baseContentUnit: e.target.value }))}
-                        placeholder="e.g., g, kg, ml, l, pieces"
-                        style={{ width: 140 }}
+                        placeholder="e.g., g, ml"
+                        style={{ width: '100%', maxWidth: 130, boxSizing: 'border-box' }}
                       />
                     ) : (
                       item.baseContentUnit ?? '-'
@@ -256,7 +262,7 @@ export default function ItemsTable() {
                         step="0.01"
                         value={draft.purchasePackQuantity}
                         onChange={(e) => setDraft((s) => ({ ...s, purchasePackQuantity: e.target.value }))}
-                        style={{ width: 120 }}
+                        style={{ width: '100%', maxWidth: 110, boxSizing: 'border-box' }}
                       />
                     ) : (
                       item.purchasePackQuantity ?? '-'
@@ -268,8 +274,8 @@ export default function ItemsTable() {
                         className="input"
                         value={draft.purchasePackUnit}
                         onChange={(e) => setDraft((s) => ({ ...s, purchasePackUnit: e.target.value }))}
-                        placeholder="e.g., pieces, unit, bag, box"
-                        style={{ width: 140 }}
+                        placeholder="e.g., unit, box"
+                        style={{ width: '100%', maxWidth: 130, boxSizing: 'border-box' }}
                       />
                     ) : (
                       item.purchasePackUnit ?? '-'
@@ -284,7 +290,7 @@ export default function ItemsTable() {
                         step="1"
                         value={draft.minStock}
                         onChange={(e) => setDraft((s) => ({ ...s, minStock: e.target.value }))}
-                        style={{ width: 100, textAlign: 'center' }}
+                        style={{ width: '100%', maxWidth: 90, textAlign: 'center', boxSizing: 'border-box' }}
                       />
                     ) : (
                       <span style={{ 
