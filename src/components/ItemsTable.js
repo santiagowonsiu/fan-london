@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createItem, fetchItems, toggleArchive, updateItem, deleteItem } from '@/lib/api';
 import AddItemModal from './AddItemModal';
 import ImageUpload from './ImageUpload';
@@ -211,7 +211,8 @@ export default function ItemsTable() {
               </tr>
             ) : (
               filtered.map((item) => (
-                <tr key={item._id} className={item.archived ? 'row-archived' : undefined}>
+                <React.Fragment key={item._id}>
+                <tr className={item.archived ? 'row-archived' : undefined}>
                   <td className="td" style={{ padding: 4 }}>
                     {item.imageUrl ? (
                       <img
@@ -377,6 +378,7 @@ export default function ItemsTable() {
                     </td>
                   </tr>
                 )}
+                </React.Fragment>
               ))
             )}
           </tbody>
