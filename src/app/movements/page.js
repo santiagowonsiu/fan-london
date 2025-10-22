@@ -1007,6 +1007,8 @@ export default function InventoryMovementsPage() {
                     <ImageUpload
                       currentImageUrl={newTx.photoUrl}
                       onImageUploaded={(url) => setNewTx(prev => ({ ...prev, photoUrl: url || '' }))}
+                      uploadPreset="fan_movements"
+                      folder="fan-movements"
                     />
                     {newTx.photoUrl && (
                       <div style={{ marginTop: 12 }}>

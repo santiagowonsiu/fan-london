@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 
-export default function ImageUpload({ currentImageUrl, onImageUploaded }) {
+export default function ImageUpload({ currentImageUrl, onImageUploaded, uploadPreset = 'fan_products', folder = 'fan-products' }) {
   const [uploading, setUploading] = useState(false);
   const widgetRef = useRef(null);
 
@@ -37,21 +37,21 @@ export default function ImageUpload({ currentImageUrl, onImageUploaded }) {
       widgetRef.current = window.cloudinary.createUploadWidget(
         {
           cloudName: cloudName,
-          uploadPreset: 'fan_products', // You'll need to create this preset in Cloudinary
+          uploadPreset: uploadPreset, // Configurable preset
           sources: ['local', 'camera'],
           multiple: false,
           maxFileSize: 5000000, // 5MB max
           clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
           cropping: false, // Optional cropping
           showSkipCropButton: true, // Allow skipping crop
-          folder: 'fan-products',
+          folder: folder, // Configurable folder
           resourceType: 'image',
         },
         (error, result) => {
           if (error) {
             console.error('Upload error:', error);
             const errorMsg = error.message || error.statusText || 'Unknown error';
-            alert('Upload failed: ' + errorMsg + '\n\nPlease check:\n1. Upload preset "fan_products" exists\n2. Preset is set to "Unsigned"');
+            alert('Upload failed: ' + errorMsg + '\n\nPlease check:\n1. Upload preset "' + uploadPreset + '" exists\n2. Preset is set to "Unsigned"');
             setUploading(false);
             return;
           }
