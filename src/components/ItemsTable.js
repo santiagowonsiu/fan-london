@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createItem, fetchItems, toggleArchive, updateItem, deleteItem } from '@/lib/api';
 import AddItemModal from './AddItemModal';
+import ImageUpload from './ImageUpload';
 
 export default function ItemsTable() {
   const [items, setItems] = useState([]);
@@ -19,6 +20,7 @@ export default function ItemsTable() {
     purchasePackQuantity: '',
     purchasePackUnit: '',
     minStock: '',
+    imageUrl: '',
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -60,6 +62,7 @@ export default function ItemsTable() {
       purchasePackQuantity: item.purchasePackQuantity ?? '',
       purchasePackUnit: item.purchasePackUnit ?? '',
       minStock: item.minStock ?? '',
+      imageUrl: item.imageUrl ?? '',
     });
   }
 
@@ -73,6 +76,7 @@ export default function ItemsTable() {
       purchasePackQuantity: '',
       purchasePackUnit: '',
       minStock: '',
+      imageUrl: '',
     });
   }
 
@@ -86,6 +90,7 @@ export default function ItemsTable() {
         purchasePackQuantity: draft.purchasePackQuantity === '' ? undefined : Number(draft.purchasePackQuantity),
         purchasePackUnit: draft.purchasePackUnit || undefined,
         minStock: draft.minStock === '' ? 0 : Number(draft.minStock),
+        imageUrl: draft.imageUrl || undefined,
       };
       console.log('Saving item with payload:', payload);
       const updated = await updateItem(id, payload);
@@ -126,7 +131,7 @@ export default function ItemsTable() {
     load();
   }
 
-  const baseCols = 7; // Added minStock column
+  const baseCols = 8; // Added minStock + image columns
   const cols = isEditMode ? baseCols + 2 : baseCols;
 
   return (
@@ -183,6 +188,7 @@ export default function ItemsTable() {
         <table className="table">
           <thead>
             <tr>
+              <th className="th" style={{ width: 80 }}>Image</th>
               <th className="th">Type</th>
               <th className="th">Item</th>
               <th className="th" title="Base Content: intrinsic quantity per product. Example: 'X 100 Bags' → 100 bags; '400 ML' → 400 ml.">Base Content</th>
@@ -206,6 +212,35 @@ export default function ItemsTable() {
             ) : (
               filtered.map((item) => (
                 <tr key={item._id} className={item.archived ? 'row-archived' : undefined}>
+                  <td className="td" style={{ padding: 4 }}>
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        style={{
+                          width: 60,
+                          height: 60,
+                          objectFit: 'cover',
+                          borderRadius: 6,
+                          border: '1px solid #e5e7eb'
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: 60,
+                        height: 60,
+                        background: '#f3f4f6',
+                        borderRadius: 6,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 24,
+                        color: '#d1d5db'
+                      }}>
+                        📦
+                      </div>
+                    )}
+                  </td>
                   <td className="td">
                     {editId === item._id ? (
                       <input
@@ -329,6 +364,19 @@ export default function ItemsTable() {
                     </td>
                   )}
                 </tr>
+                {editId === item._id && isEditMode && (
+                  <tr>
+                    <td className="td" colSpan={cols} style={{ background: '#f9fafb', padding: 16 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+                        Product Image
+                      </div>
+                      <ImageUpload
+                        currentImageUrl={draft.imageUrl}
+                        onImageUploaded={(url) => setDraft((s) => ({ ...s, imageUrl: url || '' }))}
+                      />
+                    </td>
+                  </tr>
+                )}
               ))
             )}
           </tbody>

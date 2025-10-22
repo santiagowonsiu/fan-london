@@ -1,0 +1,170 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
+
+export default function ImageUpload({ currentImageUrl, onImageUploaded }) {
+  const [uploading, setUploading] = useState(false);
+  const widgetRef = useRef(null);
+
+  useEffect(() => {
+    // Load Cloudinary Upload Widget script
+    if (!window.cloudinary) {
+      const script = document.createElement('script');
+      script.src = 'https://upload-widget.cloudinary.com/global/all.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  function openUploadWidget() {
+    if (!window.cloudinary) {
+      alert('Cloudinary widget is loading, please try again in a moment.');
+      return;
+    }
+
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    if (!cloudName) {
+      alert('Cloudinary is not configured. Please add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME to environment variables.');
+      return;
+    }
+
+    if (!widgetRef.current) {
+      widgetRef.current = window.cloudinary.createUploadWidget(
+        {
+          cloudName: cloudName,
+          uploadPreset: 'fan_products', // You'll need to create this preset in Cloudinary
+          sources: ['local', 'camera'],
+          multiple: false,
+          maxFileSize: 5000000, // 5MB max
+          clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+          cropping: true,
+          croppingAspectRatio: 1, // Square crop (1:1)
+          croppingDefaultSelectionRatio: 1,
+          croppingShowDimensions: true,
+          folder: 'fan-products',
+          resourceType: 'image',
+          transformation: [
+            { width: 800, height: 800, crop: 'fill', quality: 'auto:good' }
+          ],
+        },
+        (error, result) => {
+          if (error) {
+            console.error('Upload error:', error);
+            alert('Upload failed: ' + error.message);
+            setUploading(false);
+            return;
+          }
+
+          if (result.event === 'success') {
+            console.log('Upload successful:', result.info);
+            onImageUploaded(result.info.secure_url);
+            setUploading(false);
+            widgetRef.current.close();
+          }
+
+          if (result.event === 'close') {
+            setUploading(false);
+          }
+        }
+      );
+    }
+
+    setUploading(true);
+    widgetRef.current.open();
+  }
+
+  function removeImage() {
+    if (confirm('Remove this image?')) {
+      onImageUploaded(null);
+    }
+  }
+
+  return (
+    <div>
+      {currentImageUrl ? (
+        <div style={{ position: 'relative', display: 'inline-block' }}>
+          <Image
+            src={currentImageUrl}
+            alt="Product"
+            width={150}
+            height={150}
+            style={{ 
+              borderRadius: 8, 
+              objectFit: 'cover',
+              border: '2px solid #e5e7eb'
+            }}
+            unoptimized
+          />
+          <button
+            type="button"
+            onClick={removeImage}
+            style={{
+              position: 'absolute',
+              top: -8,
+              right: -8,
+              background: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: '50%',
+              width: 24,
+              height: 24,
+              cursor: 'pointer',
+              fontSize: 16,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+            }}
+          >
+            ×
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={openUploadWidget}
+          disabled={uploading}
+          style={{
+            width: 150,
+            height: 150,
+            border: '2px dashed #d1d5db',
+            borderRadius: 8,
+            background: '#f9fafb',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            color: '#6b7280',
+            fontSize: 14,
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#9ca3af';
+            e.currentTarget.style.background = '#f3f4f6';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#d1d5db';
+            e.currentTarget.style.background = '#f9fafb';
+          }}
+        >
+          {uploading ? (
+            <>
+              <div>⏳</div>
+              <div>Uploading...</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 32 }}>📷</div>
+              <div style={{ fontWeight: 600 }}>Add Image</div>
+              <div style={{ fontSize: 11, color: '#9ca3af' }}>Square, max 5MB</div>
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
+

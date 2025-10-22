@@ -1,10 +1,6 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
-
-// Cloudinary URL will be set after upload
-const CLOUDINARY_URL = process.env.NEXT_PUBLIC_CLOUDINARY_LANDING_URL || '/assets/images/IMG_1692.gif';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,31 +15,12 @@ export default function LandingPage() {
       overflow: 'hidden',
       background: '#000'
     }}>
-      {/* Background GIF with reduced exposure */}
+      {/* Dark background with subtle gradient */}
       <div style={{
         position: 'absolute',
         inset: 0,
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #000000 100%)',
         zIndex: 0
-      }}>
-        <Image
-          src={CLOUDINARY_URL}
-          alt="FAN London"
-          fill
-          style={{ 
-            objectFit: 'cover',
-            filter: 'brightness(0.4) contrast(1.1)',
-          }}
-          priority
-          unoptimized // For external URLs
-        />
-      </div>
-
-      {/* Gradient overlay for better text readability */}
-      <div style={{
-        position: 'absolute',
-        inset: 0,
-        background: 'linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.6))',
-        zIndex: 1
       }} />
 
       {/* Content */}

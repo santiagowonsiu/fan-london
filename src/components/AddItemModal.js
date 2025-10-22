@@ -2,17 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { createItem, createType, fetchSuggestions, fetchTypes } from '@/lib/api';
+import ImageUpload from './ImageUpload';
 
 export default function AddItemModal({ isOpen, onClose, onItemAdded }) {
   const [types, setTypes] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
-  const [formData, setFormData] = useState({ type: '', name: '' });
+  const [formData, setFormData] = useState({ type: '', name: '', imageUrl: '' });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       loadTypes();
-      setFormData({ type: '', name: '' });
+      setFormData({ type: '', name: '', imageUrl: '' });
       setSuggestions([]);
     }
   }, [isOpen]);
@@ -54,7 +55,11 @@ export default function AddItemModal({ isOpen, onClose, onItemAdded }) {
         await loadTypes();
       }
 
-      await createItem({ type: typeName, name: formData.name.trim() });
+      await createItem({ 
+        type: typeName, 
+        name: formData.name.trim(),
+        imageUrl: formData.imageUrl || undefined
+      });
       onItemAdded();
       onClose();
     } catch (e) {
@@ -126,6 +131,14 @@ export default function AddItemModal({ isOpen, onClose, onItemAdded }) {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="form-group">
+            <label>Product Image</label>
+            <ImageUpload
+              currentImageUrl={formData.imageUrl}
+              onImageUploaded={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))}
+            />
           </div>
 
           <div className="modal-actions">
