@@ -55,6 +55,9 @@ export default function InventoryMovementsPage() {
   // Movement type
   const [movementType, setMovementType] = useState('single'); // 'single' or 'batch'
 
+  // View mode
+  const [viewMode, setViewMode] = useState('item'); // 'item' or 'order'
+
   // Batch movement state
   const [batchItems, setBatchItems] = useState([]); // Array of {item, quantity, usePack}
   const [batchPhotoUrl, setBatchPhotoUrl] = useState('');
@@ -411,6 +414,43 @@ export default function InventoryMovementsPage() {
         </div>
       </div>
 
+      {/* View Mode Toggle */}
+      <div style={{ marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center' }}>
+        <label style={{ fontSize: 14, fontWeight: 600, color: '#6b7280' }}>View:</label>
+        <div style={{ display: 'flex', border: '1px solid #e5e7eb', borderRadius: 6, overflow: 'hidden' }}>
+          <button
+            type="button"
+            className="button"
+            onClick={() => setViewMode('item')}
+            style={{
+              border: 'none',
+              background: viewMode === 'item' ? '#7c3aed' : 'white',
+              color: viewMode === 'item' ? 'white' : '#111',
+              padding: '8px 16px',
+              fontSize: 14,
+              fontWeight: 600
+            }}
+          >
+            Item by Item
+          </button>
+          <button
+            type="button"
+            className="button"
+            onClick={() => setViewMode('order')}
+            style={{
+              border: 'none',
+              background: viewMode === 'order' ? '#7c3aed' : 'white',
+              color: viewMode === 'order' ? 'white' : '#111',
+              padding: '8px 16px',
+              fontSize: 14,
+              fontWeight: 600
+            }}
+          >
+            By Order
+          </button>
+        </div>
+      </div>
+
       {/* Filters */}
       <div className="controls" style={{ marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -563,7 +603,8 @@ export default function InventoryMovementsPage() {
               <th className="th" style={{ textAlign: 'right', minWidth: 90 }} title="Quantity in purchase pack units">Pack Qty</th>
               <th className="th" style={{ textAlign: 'right', minWidth: 100 }} title="Cumulative stock at this point in time">Stock at Time</th>
               <th className="th" style={{ minWidth: 100 }}>Person</th>
-              <th className="th" style={{ minWidth: 80 }}>Photo</th>
+              {viewMode === 'item' && <th className="th" style={{ minWidth: 80 }}>Photo</th>}
+              {viewMode === 'order' && <th className="th" style={{ minWidth: 120 }}>Order ID</th>}
               {isEditMode && <th className="th" style={{ minWidth: 180 }}>Actions</th>}
             </tr>
           </thead>
@@ -656,40 +697,81 @@ export default function InventoryMovementsPage() {
                   <td className="td">
                     {tx.personName || <span style={{ color: '#9ca3af' }}>-</span>}
                   </td>
-                  <td className="td" style={{ padding: 4 }}>
-                    {tx.photoUrl ? (
-                      <img
-                        src={tx.photoUrl}
-                        alt="Movement photo"
-                        style={{
+                  {viewMode === 'item' && (
+                    <td className="td" style={{ padding: 4 }}>
+                      {tx.photoUrl ? (
+                        <img
+                          src={tx.photoUrl}
+                          alt="Movement photo"
+                          style={{
+                            width: 50,
+                            height: 50,
+                            objectFit: 'cover',
+                            borderRadius: 4,
+                            border: '1px solid #e5e7eb',
+                            cursor: 'pointer'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openImageModal(tx.photoUrl);
+                          }}
+                        />
+                      ) : (
+                        <div style={{
                           width: 50,
                           height: 50,
-                          objectFit: 'cover',
+                          background: '#f3f4f6',
                           borderRadius: 4,
-                          border: '1px solid #e5e7eb',
-                          cursor: 'pointer'
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openImageModal(tx.photoUrl);
-                        }}
-                      />
-                    ) : (
-                      <div style={{
-                        width: 50,
-                        height: 50,
-                        background: '#f3f4f6',
-                        borderRadius: 4,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 16,
-                        color: '#9ca3af'
-                      }}>
-                        📷
-                      </div>
-                    )}
-                  </td>
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 16,
+                          color: '#9ca3af'
+                        }}>
+                          📷
+                        </div>
+                      )}
+                    </td>
+                  )}
+                  {viewMode === 'order' && (
+                    <td className="td">
+                      {tx.orderId ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: tx.orderType === 'consolidated' ? '#7c3aed' : '#6b7280',
+                            background: tx.orderType === 'consolidated' ? '#f3e8ff' : '#f9fafb',
+                            padding: '4px 8px',
+                            borderRadius: 4,
+                            border: tx.orderType === 'consolidated' ? '1px solid #c4b5fd' : '1px solid #e5e7eb'
+                          }}>
+                            {tx.orderType === 'consolidated' ? '📦' : '📋'} {tx.orderId.substring(0, 15)}...
+                          </span>
+                          {tx.photoUrl && (
+                            <img
+                              src={tx.photoUrl}
+                              alt="Order photo"
+                              style={{
+                                width: 32,
+                                height: 32,
+                                objectFit: 'cover',
+                                borderRadius: 4,
+                                border: '1px solid #e5e7eb',
+                                cursor: 'pointer'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openImageModal(tx.photoUrl);
+                              }}
+                            />
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 12, color: '#9ca3af' }}>Single</span>
+                      )}
+                    </td>
+                  )}
                   {isEditMode && (
                     <td className="td" style={{ display: 'flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
                       {editId === tx._id ? (
