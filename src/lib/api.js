@@ -220,3 +220,48 @@ export async function updateExternalOrder(id, data) {
   return res.json();
 }
 
+// Suppliers API
+export async function fetchSuppliers(params = {}) {
+  const query = new URLSearchParams();
+  if (params.q) query.set('q', params.q);
+  const res = await fetch(`${API_BASE}/suppliers?${query.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch suppliers');
+  return res.json();
+}
+
+export async function createSupplier(data) {
+  const res = await fetch(`${API_BASE}/suppliers`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create supplier');
+  }
+  return res.json();
+}
+
+export async function updateSupplier(id, data) {
+  const res = await fetch(`${API_BASE}/suppliers/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update supplier');
+  }
+  return res.json();
+}
+
+export async function deleteSupplier(id) {
+  const res = await fetch(`${API_BASE}/suppliers/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok && res.status !== 204) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to delete supplier');
+  }
+}
+
