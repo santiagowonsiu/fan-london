@@ -446,6 +446,68 @@ export default function InventoryMovementsPage() {
     setBatchItems(prev => prev.filter((_, i) => i !== index));
   }
 
+  async function deleteOrder(order) {
+    const itemsList = order.items.map(item => 
+      `${item.itemId?.name || 'Unknown'} (${item.direction === 'in' ? '+' : '-'}${item.quantityPack || item.quantity} ${item.itemId?.purchasePackUnit || 'unit'})`
+    ).join(', ');
+
+    const confirmMsg = `Are you sure you want to delete this ${order.orderType === 'consolidated' ? 'batch' : 'single'} order?\n\nOrder: ${order.orderId}\nItems (${order.items.length}): ${itemsList}\nPerson: ${order.personName || 'Unknown'}\nDate: ${new Date(order.date).toLocaleString()}`;
+    
+    if (!confirm(confirmMsg)) return;
+
+    const justification = prompt('Please provide a justification for deleting this order:');
+    if (!justification || !justification.trim()) {
+      alert('Justification is required to delete an order.');
+      return;
+    }
+
+    try {
+      // Create a single activity log for the entire order deletion
+      const itemDetails = order.items.map(item => ({
+        name: item.itemId?.name || 'Unknown',
+        type: item.itemId?.type || 'Unknown',
+        direction: item.direction,
+        quantityBase: item.quantityBase || item.quantity,
+        quantityPack: item.quantityPack || item.quantity,
+        baseUnit: item.itemId?.baseContentUnit || 'unit',
+        packUnit: item.itemId?.purchasePackUnit || 'unit'
+      }));
+
+      // Log the order deletion first
+      await fetch('/api/activity-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'order_deleted',
+          entityType: 'movement_order',
+          entityId: order.orderId,
+          entityName: `${order.orderType === 'consolidated' ? 'Batch' : 'Single'} Order - ${order.items.length} items`,
+          details: {
+            orderId: order.orderId,
+            orderType: order.orderType,
+            direction: order.direction,
+            personName: order.personName,
+            date: order.date,
+            itemCount: order.items.length,
+            items: itemDetails,
+            photoUrl: order.photoUrl
+          },
+          justification: justification.trim()
+        })
+      });
+
+      // Delete all transactions in the order (this will also create individual transaction_deleted logs)
+      const deletePromises = order.items.map(item => deleteTransaction(item._id, justification.trim()));
+      await Promise.all(deletePromises);
+
+      // Reload transactions
+      loadTransactions();
+      alert(`Order deleted successfully (${order.items.length} transactions removed)`);
+    } catch (e) {
+      alert('Error deleting order: ' + e.message);
+    }
+  }
+
   const cols = isEditMode ? 10 : 9;
 
   return (
@@ -857,13 +919,14 @@ export default function InventoryMovementsPage() {
                 <th className="th" style={{ minWidth: 90 }}>Direction</th>
                 <th className="th" style={{ minWidth: 100 }}>Person</th>
                 <th className="th" style={{ minWidth: 80 }}>Photo</th>
+                {isEditMode && <th className="th" style={{ minWidth: 100 }}>Actions</th>}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td className="td" colSpan={7}>Loading...</td></tr>
+                <tr><td className="td" colSpan={isEditMode ? 8 : 7}>Loading...</td></tr>
               ) : filteredRows.length === 0 ? (
-                <tr><td className="td" colSpan={7}>No transactions found</td></tr>
+                <tr><td className="td" colSpan={isEditMode ? 8 : 7}>No transactions found</td></tr>
               ) : groupTransactionsByOrder(filteredRows).slice((page - 1) * itemsPerPage, page * itemsPerPage).map((order) => (
                 <Fragment key={order.orderId}>
                   <tr 
@@ -956,10 +1019,28 @@ export default function InventoryMovementsPage() {
                         </div>
                       )}
                     </td>
+                    {isEditMode && (
+                      <td className="td" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="button"
+                          onClick={() => deleteOrder(order)}
+                          style={{
+                            background: '#dc2626',
+                            color: 'white',
+                            padding: '6px 12px',
+                            fontSize: 13,
+                            fontWeight: 600
+                          }}
+                        >
+                          Delete Order
+                        </button>
+                      </td>
+                    )}
                   </tr>
                   {expandedOrders.has(order.orderId) && (
                     <tr>
-                      <td colSpan={7} style={{ padding: 0, background: '#f9fafb' }}>
+                      <td colSpan={isEditMode ? 8 : 7} style={{ padding: 0, background: '#f9fafb' }}>
                         <div style={{ padding: '16px 24px' }}>
                           <div style={{ fontWeight: 600, marginBottom: 12, color: '#374151' }}>
                             Order Items:
