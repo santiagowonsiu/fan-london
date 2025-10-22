@@ -19,10 +19,10 @@ export default function Header() {
         <Link href="/" className="brand" style={{ display: 'flex', alignItems: 'center' }}>
           <Image src={fanLogo} alt="FAN" height={32} width={120} style={{ height: 'auto', width: 'auto' }} />
         </Link>
-        <nav className="nav">
-          <Link href="/" className={isActive('/') ? 'active' : undefined}>
-            Product List
-          </Link>
+          <nav className="nav">
+            <Link href="/products" className={isActive('/products') ? 'active' : undefined}>
+              Product List
+            </Link>
           <Link href="/transactions" className={isActive('/transactions') ? 'active' : undefined}>
             Transactions
           </Link>
