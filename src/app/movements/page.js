@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchItems, fetchTransactions, updateTransaction, deleteTransaction, postTransaction } from '@/lib/api';
+import ImageUpload from '@/components/ImageUpload';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +37,8 @@ export default function InventoryMovementsPage() {
     quantity: '',
     usePack: true,
     observations: '',
-    personName: ''
+    personName: '',
+    photoUrl: ''
   });
   const [txQuery, setTxQuery] = useState('');
   const [txSuggestions, setTxSuggestions] = useState([]);
@@ -45,6 +47,10 @@ export default function InventoryMovementsPage() {
   // Pagination
   const [page, setPage] = useState(1);
   const [itemsPerPage] = useState(50);
+
+  // Image modal
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [modalImageUrl, setModalImageUrl] = useState('');
 
   useEffect(() => {
     loadTransactions();
@@ -149,6 +155,16 @@ export default function InventoryMovementsPage() {
     setExpandedId(expandedId === id ? null : id);
   }
 
+  function openImageModal(imageUrl) {
+    setModalImageUrl(imageUrl);
+    setShowImageModal(true);
+  }
+
+  function closeImageModal() {
+    setShowImageModal(false);
+    setModalImageUrl('');
+  }
+
   // Calculate running stock
   const reversedRows = [...filteredRows].reverse();
   const rowsWithStock = reversedRows.map((tx, index) => {
@@ -223,6 +239,7 @@ export default function InventoryMovementsPage() {
   async function submitNewTransaction(e) {
     e.preventDefault();
     if (!newTx.selectedItem) return alert('Select an item');
+    if (!newTx.photoUrl) return alert('Photo is mandatory for all movements');
     const qtyNum = Number(newTx.quantity);
     if (!Number.isFinite(qtyNum) || qtyNum <= 0) return alert('Enter a valid quantity');
     
@@ -247,7 +264,8 @@ export default function InventoryMovementsPage() {
         quantityPack,
         unitUsed: newTx.usePack ? 'pack' : 'base',
         observations: newTx.observations.trim() || undefined,
-        personName: newTx.personName.trim()
+        personName: newTx.personName.trim(),
+        photoUrl: newTx.photoUrl
       });
       
       // Reset and close
@@ -257,7 +275,8 @@ export default function InventoryMovementsPage() {
         quantity: '',
         usePack: true,
         observations: '',
-        personName: ''
+        personName: '',
+        photoUrl: ''
       });
       setTxQuery('');
       setShowNewTransaction(false);
@@ -270,7 +289,7 @@ export default function InventoryMovementsPage() {
     }
   }
 
-  const cols = isEditMode ? 9 : 8;
+  const cols = isEditMode ? 10 : 9;
 
   return (
     <div className="app-container">
@@ -438,6 +457,7 @@ export default function InventoryMovementsPage() {
               <th className="th" style={{ textAlign: 'right', minWidth: 90 }} title="Quantity in purchase pack units">Pack Qty</th>
               <th className="th" style={{ textAlign: 'right', minWidth: 100 }} title="Cumulative stock at this point in time">Stock at Time</th>
               <th className="th" style={{ minWidth: 100 }}>Person</th>
+              <th className="th" style={{ minWidth: 80 }}>Photo</th>
               {isEditMode && <th className="th" style={{ minWidth: 180 }}>Actions</th>}
             </tr>
           </thead>
@@ -529,6 +549,40 @@ export default function InventoryMovementsPage() {
                   </td>
                   <td className="td">
                     {tx.personName || <span style={{ color: '#9ca3af' }}>-</span>}
+                  </td>
+                  <td className="td" style={{ padding: 4 }}>
+                    {tx.photoUrl ? (
+                      <img
+                        src={tx.photoUrl}
+                        alt="Movement photo"
+                        style={{
+                          width: 50,
+                          height: 50,
+                          objectFit: 'cover',
+                          borderRadius: 4,
+                          border: '1px solid #e5e7eb',
+                          cursor: 'pointer'
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openImageModal(tx.photoUrl);
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: 50,
+                        height: 50,
+                        background: '#f3f4f6',
+                        borderRadius: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 16,
+                        color: '#9ca3af'
+                      }}>
+                        📷
+                      </div>
+                    )}
                   </td>
                   {isEditMode && (
                     <td className="td" style={{ display: 'flex', gap: 8 }} onClick={(e) => e.stopPropagation()}>
@@ -774,9 +828,40 @@ export default function InventoryMovementsPage() {
                         justifyContent: 'space-between',
                         alignItems: 'center'
                       }}>
-                        <div>
-                          <div style={{ fontWeight: 600, color: '#065f46' }}>{newTx.selectedItem.name}</div>
-                          <div style={{ fontSize: 13, color: '#065f46' }}>{newTx.selectedItem.type}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          {/* Item Picture */}
+                          {newTx.selectedItem.imageUrl ? (
+                            <img
+                              src={newTx.selectedItem.imageUrl}
+                              alt={newTx.selectedItem.name}
+                              style={{
+                                width: 60,
+                                height: 60,
+                                objectFit: 'cover',
+                                borderRadius: 6,
+                                border: '1px solid #059669'
+                              }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: 60,
+                              height: 60,
+                              background: '#f3f4f6',
+                              borderRadius: 6,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 24,
+                              color: '#9ca3af',
+                              border: '1px solid #059669'
+                            }}>
+                              📦
+                            </div>
+                          )}
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#065f46' }}>{newTx.selectedItem.name}</div>
+                            <div style={{ fontSize: 13, color: '#065f46' }}>{newTx.selectedItem.type}</div>
+                          </div>
                         </div>
                         <button 
                           type="button" 
@@ -891,10 +976,46 @@ export default function InventoryMovementsPage() {
                   )}
                 </div>
 
+                {/* Photo Upload */}
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                    5. Take Photo of Items <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <div style={{ 
+                    padding: '16px', 
+                    border: '2px dashed #d1d5db', 
+                    borderRadius: 8, 
+                    background: '#f9fafb',
+                    textAlign: 'center'
+                  }}>
+                    <ImageUpload
+                      currentImageUrl={newTx.photoUrl}
+                      onImageUploaded={(url) => setNewTx(prev => ({ ...prev, photoUrl: url || '' }))}
+                    />
+                    {newTx.photoUrl && (
+                      <div style={{ marginTop: 12 }}>
+                        <img
+                          src={newTx.photoUrl}
+                          alt="Movement photo"
+                          style={{
+                            maxWidth: '100%',
+                            maxHeight: 200,
+                            borderRadius: 6,
+                            border: '1px solid #e5e7eb'
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 8 }}>
+                    📸 Take a clear photo of the items being moved for verification
+                  </div>
+                </div>
+
                 {/* Observations */}
                 <div style={{ marginBottom: 24 }}>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
-                    5. Observations <span style={{ fontSize: 13, fontWeight: 400, color: '#6b7280' }}>(Optional)</span>
+                    6. Observations <span style={{ fontSize: 13, fontWeight: 400, color: '#6b7280' }}>(Optional)</span>
                   </label>
                   <textarea
                     className="input"
@@ -909,7 +1030,7 @@ export default function InventoryMovementsPage() {
                 {/* Person Name */}
                 <div style={{ marginBottom: 30 }}>
                   <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
-                    6. Person Name <span style={{ color: '#dc2626' }}>*</span>
+                    7. Person Name <span style={{ color: '#dc2626' }}>*</span>
                   </label>
                   <input
                     className="input"
@@ -946,6 +1067,61 @@ export default function InventoryMovementsPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Image Modal */}
+      {showImageModal && (
+        <>
+          <div 
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.8)',
+              zIndex: 2000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 20
+            }}
+            onClick={closeImageModal}
+          >
+            <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+              <img
+                src={modalImageUrl}
+                alt="Movement photo"
+                style={{
+                  maxWidth: '100%',
+                  maxHeight: '100%',
+                  objectFit: 'contain',
+                  borderRadius: 8,
+                  boxShadow: '0 20px 40px rgba(0,0,0,0.3)'
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+              <button
+                onClick={closeImageModal}
+                style={{
+                  position: 'absolute',
+                  top: -10,
+                  right: -10,
+                  background: 'white',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 40,
+                  height: 40,
+                  fontSize: 24,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                ×
+              </button>
             </div>
           </div>
         </>

@@ -10,10 +10,16 @@ const transactionSchema = new mongoose.Schema(
     unitUsed: { type: String, enum: ['base', 'pack'] }, // Which unit was used for input
     observations: { type: String },
     personName: { type: String },
+    // New fields for photo and order grouping
+    photoUrl: { type: String }, // Cloudinary URL for movement photo
+    orderId: { type: String }, // Group transactions by order (e.g., "ORDER-20241022-001")
+    orderType: { type: String, enum: ['individual', 'consolidated'], default: 'individual' },
   },
   { timestamps: true }
 );
 
 transactionSchema.index({ createdAt: -1 });
+transactionSchema.index({ orderId: 1 });
+transactionSchema.index({ orderType: 1 });
 
 export const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);

@@ -8,7 +8,7 @@ import { ActivityLog } from '@/lib/models/ActivityLog';
 export async function POST(request) {
   await dbConnect();
   const body = await request.json();
-  const { itemId, direction, quantity, quantityBase, quantityPack, unitUsed, observations, personName } = body;
+  const { itemId, direction, quantity, quantityBase, quantityPack, unitUsed, observations, personName, photoUrl } = body;
 
   if (!itemId || !mongoose.isValidObjectId(itemId)) {
     return NextResponse.json({ error: 'Invalid itemId' }, { status: 400 });
@@ -35,7 +35,8 @@ export async function POST(request) {
       quantityPack: quantityPack || qty,
       unitUsed: unitUsed || 'pack',
       observations: observations || undefined,
-      personName: personName || undefined
+      personName: personName || undefined,
+      photoUrl: photoUrl || undefined
     });
 
     // Don't log transaction_added to Activity Log (too much noise)
