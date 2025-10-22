@@ -37,6 +37,9 @@ export async function PUT(request, context) {
           status: newItemStatus,
           statusChangedAt: oldItem?.statusChangedAt,
           previousStatus: oldItem?.previousStatus,
+          supplierId: newItem.supplierId || oldItem?.supplierId,
+          externalOrderId: newItem.externalOrderId || oldItem?.externalOrderId,
+          assignmentNotes: newItem.assignmentNotes || oldItem?.assignmentNotes,
           _id: newItem._id
         };
         
@@ -78,19 +81,20 @@ export async function PUT(request, context) {
       }
 
       // Auto-calculate overall status based on item statuses
-      const allPurchased = processedItems.every(item => item.status === 'purchased');
+      const allOrdered = processedItems.every(item => item.status === 'ordered');
       const allRejected = processedItems.every(item => item.status === 'rejected');
       const anyPending = processedItems.some(item => (item.status || 'pending') === 'pending');
+      const anyAssigned = processedItems.some(item => item.status === 'assigned');
       
       let overallStatus;
-      if (allPurchased) {
+      if (allOrdered) {
         overallStatus = 'completed';
       } else if (allRejected) {
         overallStatus = 'rejected';
-      } else if (anyPending) {
+      } else if (anyPending || anyAssigned) {
         overallStatus = 'pending';
       } else {
-        overallStatus = 'completed'; // Mixed purchased/rejected = completed
+        overallStatus = 'completed'; // Mixed ordered/rejected = completed
       }
 
       // Update with processed items
