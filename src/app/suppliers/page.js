@@ -12,12 +12,14 @@ export default function SuppliersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [typeFilter, setTypeFilter] = useState('all'); // 'all', 'order', 'expense'
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     contactNumber: '',
     orderNotes: '',
     productTypes: [],
+    supplierType: 'expense',
   });
 
   useEffect(() => {
@@ -54,6 +56,7 @@ export default function SuppliersPage() {
       contactNumber: '',
       orderNotes: '',
       productTypes: [],
+      supplierType: 'expense',
     });
     setShowAddModal(true);
   }
@@ -66,9 +69,14 @@ export default function SuppliersPage() {
       contactNumber: supplier.contactNumber || '',
       orderNotes: supplier.orderNotes || '',
       productTypes: supplier.productTypes?.map(t => t._id) || [],
+      supplierType: supplier.supplierType || 'expense',
     });
     setShowAddModal(true);
   }
+
+  const filteredSuppliers = typeFilter === 'all' 
+    ? suppliers 
+    : suppliers.filter(s => s.supplierType === typeFilter);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -120,8 +128,8 @@ export default function SuppliersPage() {
         </button>
       </div>
 
-      {/* Search */}
-      <div style={{ marginBottom: 24 }}>
+      {/* Search and Filter */}
+      <div style={{ marginBottom: 24, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           className="input"
           placeholder="Search suppliers..."
@@ -130,11 +138,20 @@ export default function SuppliersPage() {
           onKeyUp={(e) => e.key === 'Enter' && loadSuppliers()}
           style={{ maxWidth: 400 }}
         />
+        <select
+          className="select"
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value)}
+          style={{ width: 180 }}
+        >
+          <option value="all">All Suppliers</option>
+          <option value="order">Order Suppliers</option>
+          <option value="expense">Expense Only</option>
+        </select>
         <button 
           type="button" 
           className="button primary" 
           onClick={loadSuppliers}
-          style={{ marginLeft: 12 }}
         >
           Search
         </button>
@@ -143,7 +160,7 @@ export default function SuppliersPage() {
       {/* Supplier Cards */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading...</div>
-      ) : suppliers.length === 0 ? (
+      ) : suppliers.filter(s => typeFilter === 'all' || s.supplierType === typeFilter).length === 0 ? (
         <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>
           No suppliers found. Add your first supplier!
         </div>
@@ -153,7 +170,7 @@ export default function SuppliersPage() {
           gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
           gap: 20,
         }}>
-          {suppliers.map((supplier) => (
+          {suppliers.filter(s => typeFilter === 'all' || s.supplierType === typeFilter).map((supplier) => (
             <div
               key={supplier._id}
               style={{
@@ -174,28 +191,45 @@ export default function SuppliersPage() {
               }}
             >
               {/* Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#111' }}>
-                  {supplier.name}
-                </h3>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    className="button"
-                    onClick={() => openEditModal(supplier)}
-                    style={{ padding: '4px 12px', fontSize: 13 }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="button"
-                    onClick={() => handleDelete(supplier._id)}
-                    style={{ padding: '4px 12px', fontSize: 13, background: '#fee2e2', color: '#dc2626', border: '1px solid #dc2626' }}
-                  >
-                    Delete
-                  </button>
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#111' }}>
+                    {supplier.name}
+                  </h3>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      className="button"
+                      onClick={() => openEditModal(supplier)}
+                      style={{ padding: '4px 12px', fontSize: 13 }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="button"
+                      onClick={() => handleDelete(supplier._id)}
+                      style={{ padding: '4px 12px', fontSize: 13, background: '#fee2e2', color: '#dc2626', border: '1px solid #dc2626' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
+                <span
+                  style={{
+                    display: 'inline-block',
+                    padding: '3px 10px',
+                    borderRadius: 4,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    background: supplier.supplierType === 'order' ? '#d1fae5' : '#e5e7eb',
+                    color: supplier.supplierType === 'order' ? '#065f46' : '#374151',
+                  }}
+                >
+                  {supplier.supplierType === 'order' ? '📦 Order Supplier' : '💰 Expense Only'}
+                </span>
               </div>
 
               {/* Contact Info */}
@@ -327,6 +361,23 @@ export default function SuppliersPage() {
                     onChange={(e) => setFormData({ ...formData, contactNumber: e.target.value })}
                     style={{ width: '100%' }}
                   />
+                </div>
+
+                {/* Supplier Type */}
+                <div className="form-group">
+                  <label>
+                    Supplier Type <span style={{ color: '#dc2626' }}>*</span>
+                  </label>
+                  <select
+                    className="select"
+                    value={formData.supplierType}
+                    onChange={(e) => setFormData({ ...formData, supplierType: e.target.value })}
+                    style={{ width: '100%' }}
+                    required
+                  >
+                    <option value="order">📦 Order Supplier (can send orders to)</option>
+                    <option value="expense">💰 Expense Only (invoice tracking)</option>
+                  </select>
                 </div>
 
                 {/* Product Types */}

@@ -7,6 +7,7 @@ const supplierSchema = new mongoose.Schema(
     contactNumber: { type: String, trim: true },
     orderNotes: { type: String }, // How to make orders
     productTypes: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Type' }], // Link to product types
+    supplierType: { type: String, enum: ['order', 'expense'], default: 'expense' }, // Order-related or expense-only
   },
   { timestamps: true }
 );
