@@ -11,4 +11,5 @@ node_modules/
 out/
 
 # Large assets (too big for GitHub)
-src/assets/images/IMG_1692.gif
+src/assets/images/*.gif
+src/assets/images/*.webp

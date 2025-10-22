@@ -23,11 +23,8 @@ export default function Header() {
             <Link href="/products" className={isActive('/products') ? 'active' : undefined}>
               Product List
             </Link>
-          <Link href="/transactions" className={isActive('/transactions') ? 'active' : undefined}>
-            Transactions
-          </Link>
-          <Link href="/logs" className={isActive('/logs') ? 'active' : undefined}>
-            Transaction Logs
+          <Link href="/movements" className={isActive('/movements') ? 'active' : undefined}>
+            Inventory Movements
           </Link>
           <Link href="/stock" className={isActive('/stock') ? 'active' : undefined}>
             Current Stock
