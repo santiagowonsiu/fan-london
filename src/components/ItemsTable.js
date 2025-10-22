@@ -131,6 +131,61 @@ export default function ItemsTable() {
     load();
   }
 
+  function exportToCSV() {
+    // Prepare CSV headers
+    const headers = [
+      'Type',
+      'Item Name',
+      'Base Content Value',
+      'Base Content Unit',
+      'Purchase Pack Quantity',
+      'Purchase Pack Unit',
+      'Min Stock',
+      'Archived',
+      'Image URL'
+    ];
+
+    // Prepare CSV rows
+    const rows = items.map(item => [
+      item.type || '',
+      item.name || '',
+      item.baseContentValue || '',
+      item.baseContentUnit || '',
+      item.purchasePackQuantity || '',
+      item.purchasePackUnit || '',
+      item.minStock || 0,
+      item.archived ? 'Yes' : 'No',
+      item.imageUrl || ''
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => {
+        // Escape commas and quotes in cell content
+        const cellStr = String(cell);
+        if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+          return `"${cellStr.replace(/"/g, '""')}"`;
+        }
+        return cellStr;
+      }).join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    const timestamp = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `fan-products-${timestamp}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
   const baseCols = 8; // Added minStock + image columns
   const cols = isEditMode ? baseCols + 2 : baseCols;
 
@@ -159,6 +214,16 @@ export default function ItemsTable() {
         </select>
         <button type="button" className="button" onClick={load} disabled={loading}>
           Refresh
+        </button>
+        <button 
+          type="button" 
+          className="button" 
+          onClick={exportToCSV}
+          disabled={items.length === 0}
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <span>📥</span>
+          <span>Export CSV</span>
         </button>
         <button 
           type="button" 
