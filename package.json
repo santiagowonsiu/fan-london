@@ -8,12 +8,14 @@
     "start": "next start"
   },
   "dependencies": {
+    "cloudinary": "^2.8.0",
     "cors": "^2.8.5",
     "csv-parse": "^6.1.0",
     "dotenv": "^17.2.3",
     "mongoose": "^8.19.2",
     "morgan": "^1.10.1",
     "next": "15.5.6",
+    "next-cloudinary": "^6.16.2",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-router-dom": "^7.9.4"

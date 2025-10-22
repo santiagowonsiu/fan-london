@@ -1,0 +1,7 @@
+# Large assets
+src/assets/images/*.gif
+src/assets/images/*.webp
+
+# Scripts
+scripts/
+

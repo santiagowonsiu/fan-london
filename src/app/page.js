@@ -2,7 +2,9 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import landingGif from '@/assets/images/IMG_1692.gif';
+
+// Cloudinary URL will be set after upload
+const CLOUDINARY_URL = process.env.NEXT_PUBLIC_CLOUDINARY_LANDING_URL || '/assets/images/IMG_1692.gif';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +26,7 @@ export default function LandingPage() {
         zIndex: 0
       }}>
         <Image
-          src={landingGif}
+          src={CLOUDINARY_URL}
           alt="FAN London"
           fill
           style={{ 
@@ -32,6 +34,7 @@ export default function LandingPage() {
             filter: 'brightness(0.4) contrast(1.1)',
           }}
           priority
+          unoptimized // For external URLs
         />
       </div>
 
