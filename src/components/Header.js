@@ -4,14 +4,23 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import fanLogo from '@/assets/icons/FAN-logo-horizontal-negro.png';
+import { useState } from 'react';
 
 export default function Header() {
   const pathname = usePathname();
+  const [showPurchasingDropdown, setShowPurchasingDropdown] = useState(false);
 
   const isActive = (path) => {
     if (path === '/') return pathname === '/';
     return pathname.startsWith(path);
   };
+
+  const purchasingItems = [
+    { href: '/external-orders', label: 'External Orders' },
+    { href: '/purchasing/direct-purchases', label: 'Direct Purchases' },
+    { href: '/purchasing/summary', label: 'Summary' },
+    { href: '/purchasing/personal-expenses', label: 'Personal Expenses' }
+  ];
 
   return (
     <header className="app-header">
@@ -32,9 +41,28 @@ export default function Header() {
           <Link href="/internal-orders" className={isActive('/internal-orders') ? 'active' : undefined}>
             Internal Orders
           </Link>
-          <Link href="/external-orders" className={isActive('/external-orders') ? 'active' : undefined}>
-            External Orders
-          </Link>
+          <div 
+            className="nav-dropdown"
+            onMouseEnter={() => setShowPurchasingDropdown(true)}
+            onMouseLeave={() => setShowPurchasingDropdown(false)}
+          >
+            <span className={isActive('/purchasing') ? 'active' : undefined}>
+              Purchasing
+            </span>
+            {showPurchasingDropdown && (
+              <div className="dropdown-menu">
+                {purchasingItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`dropdown-item ${isActive(item.href) ? 'active' : ''}`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
           <Link href="/suppliers" className={isActive('/suppliers') ? 'active' : undefined}>
             Suppliers
           </Link>

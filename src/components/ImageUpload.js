@@ -3,9 +3,17 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 
-export default function ImageUpload({ currentImageUrl, onImageUploaded, uploadPreset = 'fan_products', folder = 'fan-products' }) {
+export default function ImageUpload({ 
+  currentImageUrl, 
+  onImageUploaded, 
+  uploadPreset = 'fan_products', 
+  folder = 'fan-products',
+  allowPdf = false, // New prop to allow PDF uploads
+  label = 'Add Image' // Customizable label
+}) {
   const [uploading, setUploading] = useState(false);
   const widgetRef = useRef(null);
+  const [fileType, setFileType] = useState(null); // Track if current file is image or pdf
 
   useEffect(() => {
     // Load Cloudinary Upload Widget script
@@ -15,7 +23,13 @@ export default function ImageUpload({ currentImageUrl, onImageUploaded, uploadPr
       script.async = true;
       document.body.appendChild(script);
     }
-  }, []);
+    
+    // Detect file type from URL
+    if (currentImageUrl) {
+      const isPdf = currentImageUrl.toLowerCase().includes('.pdf') || currentImageUrl.toLowerCase().includes('upload/pdf');
+      setFileType(isPdf ? 'pdf' : 'image');
+    }
+  }, [currentImageUrl]);
 
   function openUploadWidget() {
     if (!window.cloudinary) {
@@ -34,18 +48,25 @@ export default function ImageUpload({ currentImageUrl, onImageUploaded, uploadPr
     }
 
     if (!widgetRef.current) {
+      // Determine allowed formats and resource type
+      const allowedFormats = allowPdf 
+        ? ['jpg', 'jpeg', 'png', 'webp', 'pdf']
+        : ['jpg', 'jpeg', 'png', 'webp'];
+      
+      const resourceType = allowPdf ? 'auto' : 'image'; // 'auto' allows both images and PDFs
+      
       widgetRef.current = window.cloudinary.createUploadWidget(
         {
           cloudName: cloudName,
           uploadPreset: uploadPreset, // Configurable preset
           sources: ['local', 'camera'],
           multiple: false,
-          maxFileSize: 5000000, // 5MB max
-          clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+          maxFileSize: 10000000, // 10MB max (increased for PDFs)
+          clientAllowedFormats: allowedFormats,
           cropping: false, // Optional cropping
           showSkipCropButton: true, // Allow skipping crop
           folder: folder, // Configurable folder
-          resourceType: 'image',
+          resourceType: resourceType,
         },
         (error, result) => {
           if (error) {
@@ -68,6 +89,11 @@ export default function ImageUpload({ currentImageUrl, onImageUploaded, uploadPr
             console.log('Upload successful:', result.info);
             if (result.info && result.info.secure_url) {
               onImageUploaded(result.info.secure_url);
+              
+              // Detect and set file type
+              const isPdf = result.info.format === 'pdf' || result.info.resource_type === 'raw';
+              setFileType(isPdf ? 'pdf' : 'image');
+              
               setUploading(false);
               widgetRef.current.close();
             } else {
@@ -102,18 +128,46 @@ export default function ImageUpload({ currentImageUrl, onImageUploaded, uploadPr
     <div>
       {currentImageUrl ? (
         <div style={{ position: 'relative', display: 'inline-block' }}>
-          <Image
-            src={currentImageUrl}
-            alt="Product"
-            width={150}
-            height={150}
-            style={{ 
-              borderRadius: 8, 
-              objectFit: 'cover',
-              border: '2px solid #e5e7eb'
-            }}
-            unoptimized
-          />
+          {fileType === 'pdf' ? (
+            // PDF Display
+            <a
+              href={currentImageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 150,
+                height: 150,
+                borderRadius: 8,
+                border: '2px solid #e5e7eb',
+                background: '#f3f4f6',
+                textDecoration: 'none',
+                color: '#374151',
+                gap: 8
+              }}
+            >
+              <div style={{ fontSize: 48 }}>📄</div>
+              <div style={{ fontSize: 12, fontWeight: 600 }}>PDF File</div>
+              <div style={{ fontSize: 10, color: '#6b7280' }}>Click to view</div>
+            </a>
+          ) : (
+            // Image Display
+            <Image
+              src={currentImageUrl}
+              alt="Uploaded file"
+              width={150}
+              height={150}
+              style={{ 
+                borderRadius: 8, 
+                objectFit: 'cover',
+                border: '2px solid #e5e7eb'
+              }}
+              unoptimized
+            />
+          )}
           <button
             type="button"
             onClick={removeImage}
@@ -175,9 +229,11 @@ export default function ImageUpload({ currentImageUrl, onImageUploaded, uploadPr
             </>
           ) : (
             <>
-              <div style={{ fontSize: 32 }}>📷</div>
-              <div style={{ fontWeight: 600 }}>Add Image</div>
-              <div style={{ fontSize: 11, color: '#9ca3af' }}>Square, max 5MB</div>
+              <div style={{ fontSize: 32 }}>{allowPdf ? '📎' : '📷'}</div>
+              <div style={{ fontWeight: 600 }}>{label}</div>
+              <div style={{ fontSize: 11, color: '#9ca3af' }}>
+                {allowPdf ? 'Image or PDF, max 10MB' : 'Square, max 10MB'}
+              </div>
             </>
           )}
         </button>

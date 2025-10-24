@@ -265,3 +265,87 @@ export async function deleteSupplier(id) {
   }
 }
 
+// Direct Purchases API
+export async function fetchDirectPurchases(params = {}) {
+  const query = new URLSearchParams();
+  if (params.status) query.set('status', params.status);
+  if (params.supplier) query.set('supplier', params.supplier);
+  if (params.payment) query.set('payment', params.payment);
+  const res = await fetch(`${API_BASE}/direct-purchases?${query.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch direct purchases');
+  return res.json();
+}
+
+export async function createDirectPurchase(data) {
+  const res = await fetch(`${API_BASE}/direct-purchases`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create direct purchase');
+  }
+  return res.json();
+}
+
+export async function updateDirectPurchase(id, data) {
+  const res = await fetch(`${API_BASE}/direct-purchases/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update direct purchase');
+  }
+  return res.json();
+}
+
+// Personal Expenses API
+export async function fetchPersonalExpenses(params = {}) {
+  const query = new URLSearchParams();
+  if (params.status) query.set('status', params.status);
+  if (params.category) query.set('category', params.category);
+  const res = await fetch(`${API_BASE}/personal-expenses?${query.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch personal expenses');
+  return res.json();
+}
+
+export async function createPersonalExpense(data) {
+  const res = await fetch(`${API_BASE}/personal-expenses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create personal expense');
+  }
+  return res.json();
+}
+
+export async function updatePersonalExpense(id, data) {
+  const res = await fetch(`${API_BASE}/personal-expenses/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update personal expense');
+  }
+  return res.json();
+}
+
+// Purchasing Summary API
+export async function fetchPurchasingSummary(params = {}) {
+  const query = new URLSearchParams();
+  if (params.dateRange) query.set('dateRange', params.dateRange);
+  if (params.supplier) query.set('supplier', params.supplier);
+  if (params.payment) query.set('payment', params.payment);
+  const res = await fetch(`${API_BASE}/purchasing-summary?${query.toString()}`);
+  if (!res.ok) throw new Error('Failed to fetch purchasing summary');
+  return res.json();
+}
+
