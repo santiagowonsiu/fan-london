@@ -4,50 +4,56 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const OrganizationContext = createContext();
 
-const ORGANIZATIONS = [
-  {
-    _id: '68fcdad063522a9c2c9b990f',
-    name: 'Test Organization',
-    slug: 'test',
-    country: 'UK',
-    flagEmoji: '🧪'
-  },
-  {
-    _id: '68fcdad063522a9c2c9b9910',
-    name: 'FAN Notting Hill',
-    slug: 'notting-hill',
-    country: 'UK',
-    flagEmoji: '🇬🇧'
-  },
-  {
-    _id: '68fcdad063522a9c2c9b9911',
-    name: 'FAN Miraflores',
-    slug: 'miraflores',
-    country: 'Peru',
-    flagEmoji: '🇵🇪'
-  }
-];
+// Map organization names to flag emojis
+const FLAG_MAP = {
+  'Test Organization': '🧪',
+  'FAN Notting Hill': '🇬🇧',
+  'FAN Miraflores': '🇵🇪'
+};
 
 export function OrganizationProvider({ children }) {
   const [currentOrganization, setCurrentOrganization] = useState(null);
+  const [allOrganizations, setAllOrganizations] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load selected organization from localStorage
-    const savedOrgId = localStorage.getItem('selectedOrganizationId');
-    if (savedOrgId) {
-      const org = ORGANIZATIONS.find(o => o._id === savedOrgId);
-      setCurrentOrganization(org || ORGANIZATIONS[0]); // Default to Test if not found
-    } else {
-      // Default to Test organization on first load
-      setCurrentOrganization(ORGANIZATIONS[0]);
-      localStorage.setItem('selectedOrganizationId', ORGANIZATIONS[0]._id);
+    async function loadOrganizations() {
+      try {
+        // Fetch organizations from API
+        const res = await fetch('/api/organizations');
+        if (!res.ok) throw new Error('Failed to fetch organizations');
+        const orgs = await res.json();
+        
+        // Add flag emojis to organizations
+        const orgsWithFlags = orgs.map(org => ({
+          ...org,
+          flagEmoji: FLAG_MAP[org.name] || org.flagIcon || '🏢'
+        }));
+        
+        setAllOrganizations(orgsWithFlags);
+
+        // Load selected organization from localStorage
+        const savedOrgId = localStorage.getItem('selectedOrganizationId');
+        if (savedOrgId) {
+          const org = orgsWithFlags.find(o => o._id === savedOrgId);
+          setCurrentOrganization(org || orgsWithFlags[0]);
+        } else {
+          // Default to first organization on first load
+          setCurrentOrganization(orgsWithFlags[0]);
+          localStorage.setItem('selectedOrganizationId', orgsWithFlags[0]._id);
+        }
+      } catch (error) {
+        console.error('Error loading organizations:', error);
+      } finally {
+        setLoading(false);
+      }
     }
-    setLoading(false);
+
+    loadOrganizations();
   }, []);
 
   const switchOrganization = (organizationId) => {
-    const org = ORGANIZATIONS.find(o => o._id === organizationId);
+    const org = allOrganizations.find(o => o._id === organizationId);
     if (org) {
       setCurrentOrganization(org);
       localStorage.setItem('selectedOrganizationId', organizationId);
@@ -59,7 +65,7 @@ export function OrganizationProvider({ children }) {
   return (
     <OrganizationContext.Provider value={{
       currentOrganization,
-      allOrganizations: ORGANIZATIONS,
+      allOrganizations,
       switchOrganization,
       loading
     }}>
