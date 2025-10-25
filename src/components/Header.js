@@ -127,6 +127,9 @@ export default function Header() {
           <Link href="/activity" className={isActive('/activity') ? 'active' : undefined}>
             Activity Log
           </Link>
+          <Link href="/help" className={isActive('/help') ? 'active' : undefined}>
+            Help
+          </Link>
           <Link href="/settings" className={isActive('/settings') ? 'active' : undefined}>
             Settings
           </Link>
