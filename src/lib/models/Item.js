@@ -10,7 +10,8 @@ const Counter = mongoose.models.Counter || mongoose.model('Counter', counterSche
 
 const itemSchema = new mongoose.Schema(
   {
-    sku: { type: String, unique: true }, // Auto-generated unique product ID
+    organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
+    sku: { type: String }, // Auto-generated unique product ID per organization
     type: { type: String, required: true, trim: true },
     typeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Type' },
     name: { type: String, required: true, trim: true },
@@ -25,12 +26,13 @@ const itemSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Auto-generate SKU before saving
+// Auto-generate SKU before saving (unique per organization)
 itemSchema.pre('save', async function(next) {
-  if (!this.sku) {
+  if (!this.sku && this.organizationId) {
     try {
+      const counterId = `productId_${this.organizationId}`;
       const counter = await Counter.findByIdAndUpdate(
-        'productId',
+        counterId,
         { $inc: { seq: 1 } },
         { new: true, upsert: true }
       );
@@ -42,6 +44,8 @@ itemSchema.pre('save', async function(next) {
   next();
 });
 
-itemSchema.index({ name: 1 }, { unique: true });
+itemSchema.index({ name: 1, organizationId: 1 }, { unique: true });
+itemSchema.index({ organizationId: 1 });
+itemSchema.index({ sku: 1, organizationId: 1 });
 
 export const Item = mongoose.models.Item || mongoose.model('Item', itemSchema);
