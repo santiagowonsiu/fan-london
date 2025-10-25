@@ -4,9 +4,14 @@ import dbConnect from '@/lib/db/mongodb';
 import { Transaction } from '@/lib/models/Transaction';
 import { Item } from '@/lib/models/Item';
 import { ActivityLog } from '@/lib/models/ActivityLog';
+import { getOrganizationId, validateOrganizationId } from '@/lib/utils/orgHelper';
 
 export async function POST(request) {
   await dbConnect();
+  const organizationId = getOrganizationId(request);
+  const validationError = validateOrganizationId(organizationId);
+  if (validationError) return validationError;
+
   const body = await request.json();
   const { itemId, direction, quantity, quantityBase, quantityPack, unitUsed, observations, personName, photoUrl, orderId, orderType } = body;
   
@@ -23,13 +28,14 @@ export async function POST(request) {
     return NextResponse.json({ error: 'Quantity must be > 0' }, { status: 400 });
   }
 
-  const item = await Item.findById(itemId).select('name');
+  const item = await Item.findOne({ _id: itemId, organizationId }).select('name');
   if (!item) {
     return NextResponse.json({ error: 'Item not found' }, { status: 404 });
   }
 
   try {
     const txData = { 
+      organizationId,
       itemId, 
       direction, 
       quantity: qty,
@@ -57,13 +63,17 @@ export async function POST(request) {
 
 export async function GET(request) {
   await dbConnect();
+  const organizationId = getOrganizationId(request);
+  const validationError = validateOrganizationId(organizationId);
+  if (validationError) return validationError;
+
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '50');
   const itemId = searchParams.get('itemId');
   const direction = searchParams.get('direction');
 
-  const filter = {};
+  const filter = { organizationId };
   if (itemId && mongoose.isValidObjectId(itemId)) filter.itemId = itemId;
   if (direction && ['in', 'out'].includes(direction)) filter.direction = direction;
 
