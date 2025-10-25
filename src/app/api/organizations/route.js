@@ -1,18 +1,31 @@
 import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/db/mongodb';
 import mongoose from 'mongoose';
 
+const MONGODB_URI = process.env.MONGODB_URI;
+
 export async function GET() {
-  await dbConnect();
   try {
-    console.log('Fetching organizations directly from collection...');
+    console.log('API: Starting...');
+    
+    // Connect directly without the dbConnect wrapper
+    if (mongoose.connection.readyState === 0) {
+      console.log('API: Connecting to MongoDB...');
+      await mongoose.connect(MONGODB_URI, { bufferCommands: false });
+      console.log('API: Connected!');
+    }
+    
+    console.log('API: Database name:', mongoose.connection.db.databaseName);
     const db = mongoose.connection.db;
+    
+    console.log('API: Querying organizations...');
     const organizations = await db.collection('organizations').find({ active: true }).sort({ name: 1 }).toArray();
-    console.log('Found organizations:', organizations.length);
+    console.log('API: Found:', organizations.length);
+    
     return NextResponse.json(organizations);
   } catch (error) {
-    console.error('Error fetching organizations:', error);
-    return NextResponse.json({ error: 'Failed to fetch organizations' }, { status: 500 });
+    console.error('API ERROR:', error.message);
+    console.error('API ERROR stack:', error.stack);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
