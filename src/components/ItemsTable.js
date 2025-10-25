@@ -224,7 +224,7 @@ export default function ItemsTable() {
     document.body.removeChild(link);
   }
 
-  const baseCols = 8; // Added minStock + image columns
+  const baseCols = 9; // Image, Product ID, Type, Item, Base Content, Unit, Purchase Pack, Pack Unit, Min Stock
   const cols = isEditMode ? baseCols + 2 : baseCols;
 
   return (
@@ -426,6 +426,7 @@ export default function ItemsTable() {
           <thead>
             <tr>
               <th className="th" style={{ width: 80 }}>Image</th>
+              <th className="th" style={{ width: 110 }}>Product ID</th>
               <th className="th">Type</th>
               <th className="th">Item</th>
               <th className="th" title="Base Content: intrinsic quantity per product. Example: 'X 100 Bags' → 100 bags; '400 ML' → 400 ml.">Base Content</th>
@@ -478,6 +479,15 @@ export default function ItemsTable() {
                         📦
                       </div>
                     )}
+                  </td>
+                  <td className="td" style={{ 
+                    fontFamily: 'monospace', 
+                    fontSize: 13, 
+                    fontWeight: 600,
+                    color: '#6b7280',
+                    backgroundColor: '#f9fafb'
+                  }}>
+                    {item.sku || 'N/A'}
                   </td>
                   <td className="td">
                     {editId === item._id ? (

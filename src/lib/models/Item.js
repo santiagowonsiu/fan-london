@@ -1,7 +1,16 @@
 import mongoose from 'mongoose';
 
+// Counter schema for auto-incrementing SKU
+const counterSchema = new mongoose.Schema({
+  _id: { type: String, required: true },
+  seq: { type: Number, default: 0 }
+});
+
+const Counter = mongoose.models.Counter || mongoose.model('Counter', counterSchema);
+
 const itemSchema = new mongoose.Schema(
   {
+    sku: { type: String, unique: true }, // Auto-generated unique product ID
     type: { type: String, required: true, trim: true },
     typeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Type' },
     name: { type: String, required: true, trim: true },
@@ -15,6 +24,23 @@ const itemSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Auto-generate SKU before saving
+itemSchema.pre('save', async function(next) {
+  if (!this.sku) {
+    try {
+      const counter = await Counter.findByIdAndUpdate(
+        'productId',
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+      );
+      this.sku = `FAN-${String(counter.seq).padStart(5, '0')}`;
+    } catch (error) {
+      return next(error);
+    }
+  }
+  next();
+});
 
 itemSchema.index({ name: 1 }, { unique: true });
 
