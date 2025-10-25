@@ -11,6 +11,7 @@ export default function Header() {
   const [showPurchasingDropdown, setShowPurchasingDropdown] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
   const [showStockDropdown, setShowStockDropdown] = useState(false);
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
 
   const isActive = (path) => {
     if (path === '/') return pathname === '/';
@@ -33,6 +34,12 @@ export default function Header() {
   const stockMenuItems = [
     { href: '/movements', label: 'Inventory Movements' },
     { href: '/stock', label: 'Current Stock' }
+  ];
+
+  const settingsMenuItems = [
+    { href: '/help', label: 'Help & Q&A' },
+    { href: '/settings/users', label: 'Users' },
+    { href: '/settings', label: 'General Settings' }
   ];
 
   return (
@@ -127,12 +134,28 @@ export default function Header() {
           <Link href="/activity" className={isActive('/activity') ? 'active' : undefined}>
             Activity Log
           </Link>
-          <Link href="/help" className={isActive('/help') ? 'active' : undefined}>
-            Help
-          </Link>
-          <Link href="/settings" className={isActive('/settings') ? 'active' : undefined}>
-            Settings
-          </Link>
+          <div 
+            className="nav-dropdown"
+            onMouseEnter={() => setShowSettingsDropdown(true)}
+            onMouseLeave={() => setShowSettingsDropdown(false)}
+          >
+            <span className={isActive('/settings') || isActive('/help') ? 'active' : undefined}>
+              Settings
+            </span>
+            {showSettingsDropdown && (
+              <div className="dropdown-menu">
+                {settingsMenuItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`dropdown-item ${isActive(item.href) ? 'active' : ''}`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
           <Link href="/account" className={isActive('/account') ? 'active' : undefined}>
             Account
           </Link>
