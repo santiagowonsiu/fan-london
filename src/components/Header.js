@@ -5,13 +5,16 @@ import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import fanLogo from '@/assets/icons/FAN-logo-horizontal-negro.png';
 import { useState } from 'react';
+import { useOrganization } from '@/contexts/OrganizationContext';
 
 export default function Header() {
   const pathname = usePathname();
+  const { currentOrganization, allOrganizations, switchOrganization } = useOrganization();
   const [showPurchasingDropdown, setShowPurchasingDropdown] = useState(false);
   const [showItemsDropdown, setShowItemsDropdown] = useState(false);
   const [showStockDropdown, setShowStockDropdown] = useState(false);
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
 
   const isActive = (path) => {
     if (path === '/') return pathname === '/';
@@ -152,6 +155,46 @@ export default function Header() {
                   >
                     {item.label}
                   </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          <div 
+            className="nav-dropdown"
+            onMouseEnter={() => setShowOrgDropdown(true)}
+            onMouseLeave={() => setShowOrgDropdown(false)}
+            style={{ marginLeft: 'auto' }}
+          >
+            <span style={{ 
+              cursor: 'pointer',
+              fontSize: 24,
+              padding: '4px 8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}>
+              {currentOrganization?.flagEmoji}
+            </span>
+            {showOrgDropdown && (
+              <div className="dropdown-menu" style={{ right: 0, left: 'auto' }}>
+                {allOrganizations.map((org) => (
+                  <button
+                    key={org._id}
+                    onClick={() => switchOrganization(org._id)}
+                    className={`dropdown-item ${currentOrganization?._id === org._id ? 'active' : ''}`}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      border: 'none',
+                      background: currentOrganization?._id === org._id ? '#f3f4f6' : 'transparent',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12
+                    }}
+                  >
+                    <span style={{ fontSize: 20 }}>{org.flagEmoji}</span>
+                    <span>{org.name}</span>
+                  </button>
                 ))}
               </div>
             )}
