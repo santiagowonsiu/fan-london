@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db/mongodb';
-import { Organization } from '@/lib/models/Organization';
+import mongoose from 'mongoose';
 
 export async function GET() {
   await dbConnect();
   try {
-    const organizations = await Organization.find({ isActive: true }).sort({ name: 1 });
+    console.log('Fetching organizations directly from collection...');
+    const db = mongoose.connection.db;
+    const organizations = await db.collection('organizations').find({ active: true }).sort({ name: 1 }).toArray();
+    console.log('Found organizations:', organizations.length);
     return NextResponse.json(organizations);
   } catch (error) {
     console.error('Error fetching organizations:', error);
