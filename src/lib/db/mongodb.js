@@ -6,6 +6,12 @@ if (!MONGODB_URI) {
   throw new Error('Please define MONGODB_URI environment variable');
 }
 
+// Force clear cache to use new database
+if (global.mongoose && global.mongoose.conn) {
+  console.log('Clearing cached mongoose connection...');
+  global.mongoose = { conn: null, promise: null };
+}
+
 let cached = global.mongoose;
 
 if (!cached) {
