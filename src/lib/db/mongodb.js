@@ -19,7 +19,6 @@ async function dbConnect() {
 
   if (!cached.promise) {
     const opts = {
-      dbName: 'inventory',
       bufferCommands: false,
     };
 

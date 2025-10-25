@@ -19,10 +19,14 @@ export function OrganizationProvider({ children }) {
   useEffect(() => {
     async function loadOrganizations() {
       try {
+        console.log('OrganizationContext: Fetching organizations from API...');
         // Fetch organizations from API
         const res = await fetch('/api/organizations');
+        console.log('OrganizationContext: API response status:', res.status);
         if (!res.ok) throw new Error('Failed to fetch organizations');
         const orgs = await res.json();
+        console.log('OrganizationContext: Received organizations:', orgs);
+        console.log('OrganizationContext: Organizations count:', orgs.length);
         
         // Add flag emojis to organizations
         const orgsWithFlags = orgs.map(org => ({
@@ -30,17 +34,21 @@ export function OrganizationProvider({ children }) {
           flagEmoji: FLAG_MAP[org.name] || org.flagIcon || '🏢'
         }));
         
+        console.log('OrganizationContext: Organizations with flags:', orgsWithFlags);
         setAllOrganizations(orgsWithFlags);
 
         // Load selected organization from localStorage
         const savedOrgId = localStorage.getItem('selectedOrganizationId');
-        if (savedOrgId) {
+        console.log('OrganizationContext: Saved org ID from localStorage:', savedOrgId);
+        if (savedOrgId && orgsWithFlags.length > 0) {
           const org = orgsWithFlags.find(o => o._id === savedOrgId);
           setCurrentOrganization(org || orgsWithFlags[0]);
-        } else {
+          console.log('OrganizationContext: Set current org to:', org?.name || orgsWithFlags[0]?.name);
+        } else if (orgsWithFlags.length > 0) {
           // Default to first organization on first load
           setCurrentOrganization(orgsWithFlags[0]);
           localStorage.setItem('selectedOrganizationId', orgsWithFlags[0]._id);
+          console.log('OrganizationContext: Set default org to:', orgsWithFlags[0]?.name);
         }
       } catch (error) {
         console.error('Error loading organizations:', error);
