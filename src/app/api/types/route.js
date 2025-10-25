@@ -1,11 +1,24 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db/mongodb';
 import { Type } from '@/lib/models/Type';
+import { Item } from '@/lib/models/Item';
 
 export async function GET() {
   await dbConnect();
   const types = await Type.find({}).sort({ name: 1 });
-  return NextResponse.json(types);
+  
+  // Get product count for each type
+  const typesWithCount = await Promise.all(
+    types.map(async (type) => {
+      const productCount = await Item.countDocuments({ typeId: type._id, archived: false });
+      return {
+        ...type.toObject(),
+        productCount
+      };
+    })
+  );
+  
+  return NextResponse.json(typesWithCount);
 }
 
 export async function POST(request) {

@@ -64,15 +64,39 @@ export async function fetchTypes() {
   return res.json();
 }
 
-export async function createType(name) {
+export async function createType(typeData) {
   const res = await fetch(`${API_BASE}/types`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(typeData),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Failed to create type');
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to create type');
+  }
+  return res.json();
+}
+
+export async function updateType(id, typeData) {
+  const res = await fetch(`${API_BASE}/types/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(typeData),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to update type');
+  }
+  return res.json();
+}
+
+export async function deleteType(id) {
+  const res = await fetch(`${API_BASE}/types/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error || 'Failed to delete type');
   }
   return res.json();
 }
@@ -306,6 +330,7 @@ export async function updateDirectPurchase(id, data) {
 export async function fetchPersonalExpenses(params = {}) {
   const query = new URLSearchParams();
   if (params.status) query.set('status', params.status);
+  if (params.type) query.set('type', params.type);
   if (params.category) query.set('category', params.category);
   const res = await fetch(`${API_BASE}/personal-expenses?${query.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch personal expenses');
@@ -313,16 +338,28 @@ export async function fetchPersonalExpenses(params = {}) {
 }
 
 export async function createPersonalExpense(data) {
-  const res = await fetch(`${API_BASE}/personal-expenses`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || 'Failed to create personal expense');
+  console.log('Creating personal expense with data:', data);
+  
+  try {
+    const res = await fetch(`${API_BASE}/personal-expenses`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    
+    console.log('Response status:', res.status);
+    
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      console.error('API error:', err);
+      throw new Error(err.error || `Failed to create personal expense (${res.status})`);
+    }
+    
+    return res.json();
+  } catch (error) {
+    console.error('Fetch error:', error);
+    throw error;
   }
-  return res.json();
 }
 
 export async function updatePersonalExpense(id, data) {
@@ -346,6 +383,45 @@ export async function fetchPurchasingSummary(params = {}) {
   if (params.payment) query.set('payment', params.payment);
   const res = await fetch(`${API_BASE}/purchasing-summary?${query.toString()}`);
   if (!res.ok) throw new Error('Failed to fetch purchasing summary');
+  return res.json();
+}
+
+// Stock Reconciliation API
+export async function downloadStockTemplate() {
+  const res = await fetch(`${API_BASE}/stock-reconciliation/template`);
+  if (!res.ok) throw new Error('Failed to download template');
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `stock-reconciliation-template-${new Date().toISOString().split('T')[0]}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+}
+
+export async function uploadStockReconciliation(formData) {
+  const res = await fetch(`${API_BASE}/stock-reconciliation/upload`, {
+    method: 'POST',
+    body: formData, // FormData includes the file
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to upload reconciliation');
+  }
+  return res.json();
+}
+
+export async function fetchStockReconciliations() {
+  const res = await fetch(`${API_BASE}/stock-reconciliation`);
+  if (!res.ok) throw new Error('Failed to fetch reconciliations');
+  return res.json();
+}
+
+export async function fetchStockReconciliation(id) {
+  const res = await fetch(`${API_BASE}/stock-reconciliation/${id}`);
+  if (!res.ok) throw new Error('Failed to fetch reconciliation');
   return res.json();
 }
 

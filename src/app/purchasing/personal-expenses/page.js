@@ -4,6 +4,22 @@ import { useEffect, useState } from 'react';
 import ImageUpload from '@/components/ImageUpload';
 import { fetchPersonalExpenses, createPersonalExpense, updatePersonalExpense } from '@/lib/api';
 
+// Helper function to get proper Cloudinary URL for viewing/downloading
+function getCloudinaryUrl(url, forceDownload = false) {
+  if (!url) return url;
+  
+  // For Cloudinary URLs with PDFs
+  if (url.includes('res.cloudinary.com') && url.toLowerCase().includes('.pdf')) {
+    // Convert /image/upload/ to /raw/upload/ for PDFs to ensure proper access
+    // PDFs need to be served as 'raw' resource type in Cloudinary
+    if (url.includes('/image/upload/')) {
+      return url.replace('/image/upload/', '/raw/upload/');
+    }
+  }
+  
+  return url;
+}
+
 export default function PersonalExpensesPage() {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -787,9 +803,21 @@ export default function PersonalExpensesPage() {
                               )}
                             </div>
                             {expense.reimbursementProofUrl && (
-                              <div style={{ marginTop: 8 }}>
-                                <a href={expense.reimbursementProofUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#1e40af', textDecoration: 'underline' }}>
-                                  View Proof of Transaction
+                              <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                                <a 
+                                  href={getCloudinaryUrl(expense.reimbursementProofUrl, false)} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  style={{ fontSize: 12, color: '#1e40af', textDecoration: 'underline' }}
+                                >
+                                  📄 View Proof
+                                </a>
+                                <a 
+                                  href={getCloudinaryUrl(expense.reimbursementProofUrl, true)} 
+                                  download
+                                  style={{ fontSize: 12, color: '#6b7280', textDecoration: 'underline' }}
+                                >
+                                  ⬇️ Download
                                 </a>
                               </div>
                             )}
@@ -809,9 +837,10 @@ export default function PersonalExpensesPage() {
                         )}
 
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                          {expense.receiptUrl && (
+                        {expense.receiptUrl && (
+                          <>
                             <a
-                              href={expense.receiptUrl}
+                              href={getCloudinaryUrl(expense.receiptUrl, false)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="button"
@@ -819,7 +848,16 @@ export default function PersonalExpensesPage() {
                             >
                               📄 View Receipt
                             </a>
-                          )}
+                            <a
+                              href={getCloudinaryUrl(expense.receiptUrl, true)}
+                              download
+                              className="button"
+                              style={{ fontSize: 13, background: '#f3f4f6', color: '#374151' }}
+                            >
+                              ⬇️ Download
+                            </a>
+                          </>
+                        )}
                           <button
                             type="button"
                             className="button primary"

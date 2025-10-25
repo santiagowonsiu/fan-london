@@ -9,6 +9,8 @@ import { useState } from 'react';
 export default function Header() {
   const pathname = usePathname();
   const [showPurchasingDropdown, setShowPurchasingDropdown] = useState(false);
+  const [showItemsDropdown, setShowItemsDropdown] = useState(false);
+  const [showStockDropdown, setShowStockDropdown] = useState(false);
 
   const isActive = (path) => {
     if (path === '/') return pathname === '/';
@@ -22,6 +24,17 @@ export default function Header() {
     { href: '/purchasing/personal-expenses', label: 'Personal Expenses' }
   ];
 
+  const itemsMenuItems = [
+    { href: '/product-types', label: 'Product Types' },
+    { href: '/products', label: 'Product List' },
+    { href: '/production', label: 'Production List', disabled: true }
+  ];
+
+  const stockMenuItems = [
+    { href: '/movements', label: 'Inventory Movements' },
+    { href: '/stock', label: 'Current Stock' }
+  ];
+
   return (
     <header className="app-header">
       <div className="app-header-inner">
@@ -29,15 +42,60 @@ export default function Header() {
           <Image src={fanLogo} alt="FAN" height={32} width={120} style={{ height: 'auto', width: 'auto' }} />
         </Link>
           <nav className="nav">
-            <Link href="/products" className={isActive('/products') ? 'active' : undefined}>
-              Product List
-            </Link>
-          <Link href="/movements" className={isActive('/movements') ? 'active' : undefined}>
-            Inventory Movements
-          </Link>
-          <Link href="/stock" className={isActive('/stock') ? 'active' : undefined}>
-            Current Stock
-          </Link>
+          <div 
+            className="nav-dropdown"
+            onMouseEnter={() => setShowItemsDropdown(true)}
+            onMouseLeave={() => setShowItemsDropdown(false)}
+          >
+            <span className={isActive('/products') || isActive('/product-types') || isActive('/production') ? 'active' : undefined}>
+              Items
+            </span>
+            {showItemsDropdown && (
+              <div className="dropdown-menu">
+                {itemsMenuItems.map((item) => (
+                  item.disabled ? (
+                    <span
+                      key={item.href}
+                      className="dropdown-item disabled"
+                      style={{ color: '#9ca3af', cursor: 'not-allowed' }}
+                    >
+                      {item.label}
+                    </span>
+                  ) : (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`dropdown-item ${isActive(item.href) ? 'active' : ''}`}
+                    >
+                      {item.label}
+                    </Link>
+                  )
+                ))}
+              </div>
+            )}
+          </div>
+          <div 
+            className="nav-dropdown"
+            onMouseEnter={() => setShowStockDropdown(true)}
+            onMouseLeave={() => setShowStockDropdown(false)}
+          >
+            <span className={isActive('/movements') || isActive('/stock') ? 'active' : undefined}>
+              Stock
+            </span>
+            {showStockDropdown && (
+              <div className="dropdown-menu">
+                {stockMenuItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`dropdown-item ${isActive(item.href) ? 'active' : ''}`}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
           <Link href="/internal-orders" className={isActive('/internal-orders') ? 'active' : undefined}>
             Internal Orders
           </Link>
@@ -46,7 +104,7 @@ export default function Header() {
             onMouseEnter={() => setShowPurchasingDropdown(true)}
             onMouseLeave={() => setShowPurchasingDropdown(false)}
           >
-            <span className={isActive('/purchasing') ? 'active' : undefined}>
+            <span className={isActive('/purchasing') || isActive('/external-orders') ? 'active' : undefined}>
               Purchasing
             </span>
             {showPurchasingDropdown && (

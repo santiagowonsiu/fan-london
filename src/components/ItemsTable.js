@@ -5,6 +5,8 @@ import { createItem, fetchItems, toggleArchive, updateItem, deleteItem } from '@
 import AddItemModal from './AddItemModal';
 import ImageUpload from './ImageUpload';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+
 export default function ItemsTable() {
   const [items, setItems] = useState([]);
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -24,6 +26,9 @@ export default function ItemsTable() {
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [inactiveProducts, setInactiveProducts] = useState([]);
+  const [showInactiveNotification, setShowInactiveNotification] = useState(false);
+  const [loadingInactive, setLoadingInactive] = useState(false);
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
@@ -49,8 +54,41 @@ export default function ItemsTable() {
 
   useEffect(() => {
     load();
+    loadInactiveProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [includeArchived, query, page, limit]);
+
+  async function loadInactiveProducts() {
+    setLoadingInactive(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/items/inactive`);
+      if (!res.ok) throw new Error('Failed to fetch inactive products');
+      const data = await res.json();
+      setInactiveProducts(data);
+    } catch (e) {
+      console.error('Failed to load inactive products:', e);
+    } finally {
+      setLoadingInactive(false);
+    }
+  }
+
+  async function archiveInactiveProducts(productIds) {
+    if (!window.confirm(`Are you sure you want to archive ${productIds.length} inactive product(s)?`)) {
+      return;
+    }
+
+    try {
+      for (const id of productIds) {
+        await toggleArchive(id);
+      }
+      alert(`Successfully archived ${productIds.length} product(s)!`);
+      setShowInactiveNotification(false);
+      load();
+      loadInactiveProducts();
+    } catch (e) {
+      alert('Failed to archive some products: ' + e.message);
+    }
+  }
 
   function startEdit(item) {
     setEditId(item._id);
@@ -191,7 +229,141 @@ export default function ItemsTable() {
 
   return (
     <div>
-      <h2 className="page-title" style={{ fontSize: 20 }}>Product List</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <h2 className="page-title" style={{ fontSize: 20, margin: 0 }}>Product List</h2>
+        {inactiveProducts.length > 0 && (
+          <button
+            className="button"
+            onClick={() => setShowInactiveNotification(!showInactiveNotification)}
+            style={{ 
+              background: '#f59e0b',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8
+            }}
+          >
+            <span>⚠️</span>
+            <span>{inactiveProducts.length} Inactive Product{inactiveProducts.length !== 1 ? 's' : ''}</span>
+            {inactiveProducts.length > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: -8,
+                right: -8,
+                background: '#ef4444',
+                color: 'white',
+                borderRadius: '50%',
+                width: 24,
+                height: 24,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 12,
+                fontWeight: 'bold'
+              }}>
+                {inactiveProducts.length}
+              </span>
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Inactive Products Notification */}
+      {showInactiveNotification && inactiveProducts.length > 0 && (
+        <div style={{ 
+          marginBottom: 20,
+          padding: 20, 
+          background: '#fef3c7', 
+          borderRadius: 8, 
+          border: '2px solid #f59e0b'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 16 }}>
+            <div>
+              <h3 style={{ margin: 0, marginBottom: 8, fontSize: 18, color: '#92400e' }}>
+                ⚠️ Inactive Products ({inactiveProducts.length})
+              </h3>
+              <p style={{ margin: 0, fontSize: 14, color: '#92400e' }}>
+                The following products haven't had any movements in the last 30 days. Consider archiving them:
+              </p>
+            </div>
+            <button
+              onClick={() => setShowInactiveNotification(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                fontSize: 24,
+                color: '#92400e',
+                cursor: 'pointer',
+                padding: 0,
+                lineHeight: 1
+              }}
+            >
+              ×
+            </button>
+          </div>
+          
+          <div style={{ 
+            maxHeight: 300, 
+            overflowY: 'auto',
+            marginBottom: 16,
+            background: 'white',
+            borderRadius: 6,
+            border: '1px solid #fbbf24'
+          }}>
+            <table style={{ width: '100%', fontSize: 14 }}>
+              <thead style={{ background: '#fef3c7', position: 'sticky', top: 0 }}>
+                <tr>
+                  <th style={{ padding: 12, textAlign: 'left', fontWeight: 600 }}>Product</th>
+                  <th style={{ padding: 12, textAlign: 'left', fontWeight: 600 }}>Type</th>
+                  <th style={{ padding: 12, textAlign: 'left', fontWeight: 600 }}>Days Inactive</th>
+                  <th style={{ padding: 12, textAlign: 'left', fontWeight: 600 }}>Last Movement</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inactiveProducts.map((product, idx) => (
+                  <tr key={product._id} style={{ borderBottom: idx < inactiveProducts.length - 1 ? '1px solid #fef3c7' : 'none' }}>
+                    <td style={{ padding: 12 }}>{product.name}</td>
+                    <td style={{ padding: 12 }}>{product.type}</td>
+                    <td style={{ padding: 12 }}>
+                      <span style={{ 
+                        background: product.daysSinceLastMovement > 60 ? '#fee2e2' : '#fed7aa',
+                        color: product.daysSinceLastMovement > 60 ? '#991b1b' : '#9a3412',
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        fontSize: 13,
+                        fontWeight: 500
+                      }}>
+                        {product.daysSinceLastMovement} days
+                      </span>
+                    </td>
+                    <td style={{ padding: 12, color: '#6b7280' }}>
+                      {product.lastMovement ? new Date(product.lastMovement).toLocaleDateString() : 'Never'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button
+              className="button"
+              onClick={() => archiveInactiveProducts(inactiveProducts.map(p => p._id))}
+              style={{ background: '#ef4444' }}
+            >
+              📦 Archive All {inactiveProducts.length} Products
+            </button>
+            <button
+              className="button"
+              onClick={() => setShowInactiveNotification(false)}
+              style={{ background: '#6b7280' }}
+            >
+              Keep for Now
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="controls">
         <input
           className="input input-full"

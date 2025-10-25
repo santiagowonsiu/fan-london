@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { downloadStockTemplate, uploadStockReconciliation } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +21,7 @@ async function fetchTypes() {
 }
 
 export default function CurrentStockPage() {
+  const router = useRouter();
   const [allRows, setAllRows] = useState([]);
   const [filteredRows, setFilteredRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -29,10 +32,23 @@ export default function CurrentStockPage() {
   const [selectedItems, setSelectedItems] = useState([]);
   const [selectedType, setSelectedType] = useState('all');
   const [types, setTypes] = useState([]);
+  
+  // Stock Reconciliation Modal
+  const [showReconciliationModal, setShowReconciliationModal] = useState(false);
+  const [reconciliationFile, setReconciliationFile] = useState(null);
+  const [reconciliationDate, setReconciliationDate] = useState('');
+  const [reconciliationTime, setReconciliationTime] = useState('');
+  const [performedBy, setPerformedBy] = useState('');
+  const [reconciliationNotes, setReconciliationNotes] = useState('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     loadStock();
     loadTypes();
+    // Set default date and time to now
+    const now = new Date();
+    setReconciliationDate(now.toISOString().split('T')[0]);
+    setReconciliationTime(now.toTimeString().slice(0, 5));
   }, []);
 
   useEffect(() => {
@@ -58,6 +74,79 @@ export default function CurrentStockPage() {
       setTypes(data || []);
     } catch (e) {
       console.error('Failed to load types:', e);
+    }
+  }
+
+  async function handleDownloadTemplate() {
+    try {
+      await downloadStockTemplate();
+    } catch (e) {
+      alert('Error downloading template: ' + e.message);
+    }
+  }
+
+  function handleFileChange(e) {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.name.endsWith('.csv')) {
+        alert('Please upload a CSV file');
+        return;
+      }
+      setReconciliationFile(file);
+    }
+  }
+
+  async function handleUploadReconciliation() {
+    if (!reconciliationFile) {
+      alert('Please select a file');
+      return;
+    }
+    if (!reconciliationDate || !reconciliationTime) {
+      alert('Please enter date and time');
+      return;
+    }
+    if (!performedBy) {
+      alert('Please enter who performed the count');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // Combine date and time
+      const dateTime = new Date(`${reconciliationDate}T${reconciliationTime}`);
+      
+      const formData = new FormData();
+      formData.append('file', reconciliationFile);
+      formData.append('reconciliationDate', dateTime.toISOString());
+      formData.append('performedBy', performedBy);
+      if (reconciliationNotes) {
+        formData.append('notes', reconciliationNotes);
+      }
+
+      const result = await uploadStockReconciliation(formData);
+      
+      let message = `Stock reconciliation completed!\n\nAdjusted: ${result.summary.adjusted}\nUnchanged: ${result.summary.unchanged}\nInvalid: ${result.summary.invalid}`;
+      if (result.summary.minStockChanged > 0) {
+        message += `\nMin Stock Updated: ${result.summary.minStockChanged}`;
+      }
+      alert(message);
+      
+      // Close modal and reset
+      setShowReconciliationModal(false);
+      setReconciliationFile(null);
+      setPerformedBy('');
+      setReconciliationNotes('');
+      
+      // Reload stock
+      loadStock();
+      
+      // Navigate to reconciliation report
+      router.push(`/stock-reconciliation/${result.reconciliationId}`);
+      
+    } catch (e) {
+      alert('Error uploading reconciliation: ' + e.message);
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -111,7 +200,17 @@ export default function CurrentStockPage() {
 
   return (
     <div>
-      <h2 className="page-title" style={{ fontSize: 20 }}>Current Stock</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <h2 className="page-title" style={{ fontSize: 20, margin: 0 }}>Current Stock</h2>
+        <button
+          type="button"
+          className="button primary"
+          onClick={() => setShowReconciliationModal(true)}
+          style={{ fontSize: 14, padding: '10px 20px' }}
+        >
+          📊 Stock Reconciliation
+        </button>
+      </div>
       
       {/* Filters */}
       <div className="controls" style={{ flexDirection: 'column', gap: 16, marginBottom: 20 }}>
@@ -343,6 +442,150 @@ export default function CurrentStockPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Stock Reconciliation Modal */}
+      {showReconciliationModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: 20
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: 12,
+            padding: 32,
+            maxWidth: 600,
+            width: '100%',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: 24, fontSize: 20 }}>Stock Reconciliation</h3>
+            
+            <div style={{ marginBottom: 20, padding: 16, background: '#eff6ff', borderRadius: 8, border: '1px solid #93c5fd' }}>
+              <p style={{ margin: 0, fontSize: 13, color: '#1e40af', marginBottom: 12 }}>
+                <strong>How it works:</strong>
+              </p>
+              <ol style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: '#1e40af' }}>
+                <li>Download the template CSV (includes all product details as reference)</li>
+                <li>Count your physical stock and fill in <strong>PACK STOCK</strong> (packages/boxes) OR <strong>BASE STOCK</strong> (individual units)</li>
+                <li>The reference columns (Base Content, Unit, etc.) are pre-filled to help you</li>
+                <li>Upload the completed file with the count date/time</li>
+                <li>System will automatically calculate and adjust your stock</li>
+              </ol>
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <button
+                type="button"
+                className="button"
+                onClick={handleDownloadTemplate}
+                style={{ width: '100%', marginBottom: 12, fontSize: 14 }}
+              >
+                ⬇️ Download Template CSV
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                Upload Completed Template <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileChange}
+                className="input input-full"
+              />
+              {reconciliationFile && (
+                <div style={{ fontSize: 13, color: '#059669', marginTop: 4 }}>
+                  ✓ {reconciliationFile.name}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                  Count Date <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input
+                  type="date"
+                  className="input input-full"
+                  value={reconciliationDate}
+                  onChange={(e) => setReconciliationDate(e.target.value)}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                  Count Time <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input
+                  type="time"
+                  className="input input-full"
+                  value={reconciliationTime}
+                  onChange={(e) => setReconciliationTime(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                Performed By <span style={{ color: '#dc2626' }}>*</span>
+              </label>
+              <input
+                type="text"
+                className="input input-full"
+                placeholder="Enter your name"
+                value={performedBy}
+                onChange={(e) => setPerformedBy(e.target.value)}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: 14, fontWeight: 600, marginBottom: 8 }}>
+                Notes (Optional)
+              </label>
+              <textarea
+                className="input"
+                style={{ width: '100%', fontFamily: 'inherit', resize: 'vertical' }}
+                rows={3}
+                placeholder="Any notes about this stock count..."
+                value={reconciliationNotes}
+                onChange={(e) => setReconciliationNotes(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="button"
+                onClick={() => {
+                  setShowReconciliationModal(false);
+                  setReconciliationFile(null);
+                }}
+                disabled={uploading}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="button primary"
+                onClick={handleUploadReconciliation}
+                disabled={uploading}
+              >
+                {uploading ? 'Uploading...' : 'Upload & Reconcile'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

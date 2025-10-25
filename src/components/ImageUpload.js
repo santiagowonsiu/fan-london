@@ -14,6 +14,7 @@ export default function ImageUpload({
   const [uploading, setUploading] = useState(false);
   const widgetRef = useRef(null);
   const [fileType, setFileType] = useState(null); // Track if current file is image or pdf
+  const [fileName, setFileName] = useState(null); // Track filename for display
 
   useEffect(() => {
     // Load Cloudinary Upload Widget script
@@ -24,10 +25,22 @@ export default function ImageUpload({
       document.body.appendChild(script);
     }
     
-    // Detect file type from URL
+    // Detect file type and extract filename from URL
     if (currentImageUrl) {
       const isPdf = currentImageUrl.toLowerCase().includes('.pdf') || currentImageUrl.toLowerCase().includes('upload/pdf');
       setFileType(isPdf ? 'pdf' : 'image');
+      
+      // Extract filename from URL
+      try {
+        const urlParts = currentImageUrl.split('/');
+        const fileNameWithExt = urlParts[urlParts.length - 1];
+        const decodedFileName = decodeURIComponent(fileNameWithExt.split('?')[0]);
+        setFileName(decodedFileName);
+      } catch (e) {
+        setFileName('Uploaded file');
+      }
+    } else {
+      setFileName(null);
     }
   }, [currentImageUrl]);
 
@@ -53,7 +66,8 @@ export default function ImageUpload({
         ? ['jpg', 'jpeg', 'png', 'webp', 'pdf']
         : ['jpg', 'jpeg', 'png', 'webp'];
       
-      const resourceType = allowPdf ? 'auto' : 'image'; // 'auto' allows both images and PDFs
+      // Use 'raw' for PDFs to ensure proper access
+      const resourceType = allowPdf ? 'raw' : 'image';
       
       widgetRef.current = window.cloudinary.createUploadWidget(
         {
@@ -94,6 +108,10 @@ export default function ImageUpload({
               const isPdf = result.info.format === 'pdf' || result.info.resource_type === 'raw';
               setFileType(isPdf ? 'pdf' : 'image');
               
+              // Set filename
+              const uploadedFileName = result.info.original_filename || result.info.public_id || 'Uploaded file';
+              setFileName(`${uploadedFileName}${result.info.format ? '.' + result.info.format : ''}`);
+              
               setUploading(false);
               widgetRef.current.close();
             } else {
@@ -127,70 +145,89 @@ export default function ImageUpload({
   return (
     <div>
       {currentImageUrl ? (
-        <div style={{ position: 'relative', display: 'inline-block' }}>
-          {fileType === 'pdf' ? (
-            // PDF Display
-            <a
-              href={currentImageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+        <div style={{ display: 'inline-block' }}>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            {fileType === 'pdf' ? (
+              // PDF Display
+              <a
+                href={currentImageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 150,
+                  height: 150,
+                  borderRadius: 8,
+                  border: '2px solid #e5e7eb',
+                  background: '#f3f4f6',
+                  textDecoration: 'none',
+                  color: '#374151',
+                  gap: 8
+                }}
+              >
+                <div style={{ fontSize: 48 }}>📄</div>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>PDF File</div>
+                <div style={{ fontSize: 10, color: '#6b7280' }}>Click to view</div>
+              </a>
+            ) : (
+              // Image Display
+              <Image
+                src={currentImageUrl}
+                alt="Uploaded file"
+                width={150}
+                height={150}
+                style={{ 
+                  borderRadius: 8, 
+                  objectFit: 'cover',
+                  border: '2px solid #e5e7eb'
+                }}
+                unoptimized
+              />
+            )}
+            <button
+              type="button"
+              onClick={removeImage}
               style={{
+                position: 'absolute',
+                top: -8,
+                right: -8,
+                background: '#dc2626',
+                color: 'white',
+                border: 'none',
+                borderRadius: '50%',
+                width: 24,
+                height: 24,
+                cursor: 'pointer',
+                fontSize: 16,
                 display: 'flex',
-                flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 150,
-                height: 150,
-                borderRadius: 8,
-                border: '2px solid #e5e7eb',
-                background: '#f3f4f6',
-                textDecoration: 'none',
-                color: '#374151',
-                gap: 8
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
               }}
             >
-              <div style={{ fontSize: 48 }}>📄</div>
-              <div style={{ fontSize: 12, fontWeight: 600 }}>PDF File</div>
-              <div style={{ fontSize: 10, color: '#6b7280' }}>Click to view</div>
-            </a>
-          ) : (
-            // Image Display
-            <Image
-              src={currentImageUrl}
-              alt="Uploaded file"
-              width={150}
-              height={150}
-              style={{ 
-                borderRadius: 8, 
-                objectFit: 'cover',
-                border: '2px solid #e5e7eb'
-              }}
-              unoptimized
-            />
+              ×
+            </button>
+          </div>
+          
+          {/* Filename display */}
+          {fileName && (
+            <div style={{ 
+              marginTop: 8, 
+              fontSize: 12, 
+              color: '#4b5563',
+              maxWidth: 150,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textAlign: 'center',
+              fontWeight: 500
+            }}>
+              📎 {fileName}
+            </div>
           )}
-          <button
-            type="button"
-            onClick={removeImage}
-            style={{
-              position: 'absolute',
-              top: -8,
-              right: -8,
-              background: '#dc2626',
-              color: 'white',
-              border: 'none',
-              borderRadius: '50%',
-              width: 24,
-              height: 24,
-              cursor: 'pointer',
-              fontSize: 16,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-            }}
-          >
-            ×
-          </button>
         </div>
       ) : (
         <button

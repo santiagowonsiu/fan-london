@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createItem, createType, fetchSuggestions, fetchTypes } from '@/lib/api';
+import { createItem, fetchSuggestions, fetchTypes } from '@/lib/api';
 import ImageUpload from './ImageUpload';
 
 export default function AddItemModal({ isOpen, onClose, onItemAdded }) {
@@ -43,20 +43,15 @@ export default function AddItemModal({ isOpen, onClose, onItemAdded }) {
 
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!formData.type.trim() || !formData.name.trim()) return;
+    if (!formData.type.trim() || !formData.name.trim()) {
+      alert('Please select a type and enter an item name');
+      return;
+    }
 
     setLoading(true);
     try {
-      let typeName = formData.type.trim();
-      
-      const existingType = types.find(t => t.name.toLowerCase() === typeName.toLowerCase());
-      if (!existingType) {
-        await createType(typeName);
-        await loadTypes();
-      }
-
       await createItem({ 
-        type: typeName, 
+        type: formData.type.trim(), 
         name: formData.name.trim(),
         imageUrl: formData.imageUrl || undefined
       });
@@ -67,10 +62,6 @@ export default function AddItemModal({ isOpen, onClose, onItemAdded }) {
     } finally {
       setLoading(false);
     }
-  }
-
-  function handleTypeChange(type) {
-    setFormData(prev => ({ ...prev, type }));
   }
 
   if (!isOpen) return null;
@@ -85,29 +76,25 @@ export default function AddItemModal({ isOpen, onClose, onItemAdded }) {
         
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
-            <label>Type</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <select
-                className="input"
-                value={formData.type}
-                onChange={(e) => handleTypeChange(e.target.value)}
-                style={{ flex: 1 }}
-              >
-                <option value="">Select or type new...</option>
-                {types.map(type => (
-                  <option key={type._id} value={type.name}>
-                    {type.name}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="input"
-                placeholder="Or type new type..."
-                value={formData.type}
-                onChange={(e) => handleTypeChange(e.target.value)}
-                style={{ flex: 1 }}
-              />
-            </div>
+            <label>Type *</label>
+            <select
+              className="input"
+              value={formData.type}
+              onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
+              required
+            >
+              <option value="">-- Select a type --</option>
+              {types.map(type => (
+                <option key={type._id} value={type.name}>
+                  {type.name}
+                </option>
+              ))}
+            </select>
+            {types.length === 0 && (
+              <div style={{ fontSize: 12, color: '#ef4444', marginTop: 4 }}>
+                No types available. Please create types first in the Product Types page.
+              </div>
+            )}
           </div>
 
           <div className="form-group">
