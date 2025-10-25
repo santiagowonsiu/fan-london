@@ -2,16 +2,21 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db/mongodb';
 import { Item } from '@/lib/models/Item';
 import { ActivityLog } from '@/lib/models/ActivityLog';
+import { getOrganizationId, validateOrganizationId } from '@/lib/utils/orgHelper';
 
 export async function PUT(request, context) {
   await dbConnect();
+  const organizationId = getOrganizationId(request);
+  const validationError = validateOrganizationId(organizationId);
+  if (validationError) return validationError;
+
   const params = await context.params;
   const { id } = params;
   const body = await request.json();
   const { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit, imageUrl, minStock } = body;
 
   try {
-    const oldItem = await Item.findById(id);
+    const oldItem = await Item.findOne({ _id: id, organizationId });
     if (!oldItem) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
@@ -40,6 +45,7 @@ export async function PUT(request, context) {
 
     // Log the activity
     await ActivityLog.create({
+      organizationId,
       action: 'product_edited',
       entityType: 'product',
       entityId: id,
@@ -74,6 +80,10 @@ export async function PUT(request, context) {
 
 export async function DELETE(request, context) {
   await dbConnect();
+  const organizationId = getOrganizationId(request);
+  const validationError = validateOrganizationId(organizationId);
+  if (validationError) return validationError;
+
   const params = await context.params;
   const { id } = params;
   const { searchParams } = new URL(request.url);
@@ -84,13 +94,14 @@ export async function DELETE(request, context) {
   }
 
   try {
-    const item = await Item.findById(id);
+    const item = await Item.findOne({ _id: id, organizationId });
     if (!item) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 });
     }
 
     // Log the activity before deleting
     await ActivityLog.create({
+      organizationId,
       action: 'product_deleted',
       entityType: 'product',
       entityId: id,

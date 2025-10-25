@@ -1,5 +1,27 @@
 const API_BASE = '/api';
 
+/**
+ * Get current organization ID from localStorage
+ */
+function getOrgId() {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('selectedOrganizationId');
+}
+
+/**
+ * Add organization ID to headers and params for all API calls
+ */
+function addOrgHeaders() {
+  const orgId = getOrgId();
+  return orgId ? { 'x-organization-id': orgId } : {};
+}
+
+function addOrgToParams(params) {
+  const orgId = getOrgId();
+  if (orgId) params.set('organizationId', orgId);
+  return params;
+}
+
 export async function fetchItems({ includeArchived, q, page, limit } = {}) {
   const params = new URLSearchParams();
   if (includeArchived) params.set('archived', 'true');
@@ -7,7 +29,10 @@ export async function fetchItems({ includeArchived, q, page, limit } = {}) {
   if (q) params.set('q', q);
   if (page) params.set('page', String(page));
   if (limit) params.set('limit', String(limit));
-  const res = await fetch(`${API_BASE}/items?${params.toString()}`);
+  addOrgToParams(params);
+  const res = await fetch(`${API_BASE}/items?${params.toString()}`, {
+    headers: addOrgHeaders()
+  });
   if (!res.ok) throw new Error('Failed to fetch items');
   return res.json();
 }

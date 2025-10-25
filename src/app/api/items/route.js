@@ -2,9 +2,14 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db/mongodb';
 import { Item } from '@/lib/models/Item';
 import { ActivityLog } from '@/lib/models/ActivityLog';
+import { getOrganizationId, validateOrganizationId } from '@/lib/utils/orgHelper';
 
 export async function GET(request) {
   await dbConnect();
+  const organizationId = getOrganizationId(request);
+  const validationError = validateOrganizationId(organizationId);
+  if (validationError) return validationError;
+
   const { searchParams } = new URL(request.url);
   const archived = searchParams.get('archived');
   const q = searchParams.get('q');
@@ -12,7 +17,7 @@ export async function GET(request) {
   const limitParam = searchParams.get('limit');
   const limit = limitParam === 'all' ? 'all' : parseInt(limitParam || '50');
 
-  const filter = {};
+  const filter = { organizationId };
   if (archived === 'true') filter.archived = true;
   if (archived === 'false') filter.archived = false;
   if (q) {
@@ -43,11 +48,16 @@ export async function GET(request) {
 
 export async function POST(request) {
   await dbConnect();
+  const organizationId = getOrganizationId(request);
+  const validationError = validateOrganizationId(organizationId);
+  if (validationError) return validationError;
+
   const body = await request.json();
   const { type, name, archived, baseContentValue, baseContentUnit, purchasePackQuantity, purchasePackUnit, imageUrl, minStock } = body;
   
   try {
     const item = await Item.create({
+      organizationId,
       type,
       name,
       archived: !!archived,
@@ -61,6 +71,7 @@ export async function POST(request) {
 
     // Log the activity
     await ActivityLog.create({
+      organizationId,
       action: 'product_added',
       entityType: 'product',
       entityId: item._id,
