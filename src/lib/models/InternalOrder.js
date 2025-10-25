@@ -22,7 +22,8 @@ const internalOrderItemSchema = new mongoose.Schema({
 
 const internalOrderSchema = new mongoose.Schema(
   {
-    orderNumber: { type: String, unique: true }, // e.g., "IO-20251021-001" - auto-generated
+    organizationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Organization', required: true },
+    orderNumber: { type: String }, // e.g., "IO-20251021-001" - auto-generated per org
     department: { 
       type: String, 
       enum: ['Kitchen', 'Bar', 'FOH'], 
@@ -60,6 +61,8 @@ internalOrderSchema.pre('save', async function(next) {
 
 internalOrderSchema.index({ createdAt: -1 });
 internalOrderSchema.index({ status: 1 });
+internalOrderSchema.index({ organizationId: 1 });
+internalOrderSchema.index({ orderNumber: 1, organizationId: 1 }, { sparse: true });
 
 export const InternalOrder = mongoose.models.InternalOrder || mongoose.model('InternalOrder', internalOrderSchema);
 
